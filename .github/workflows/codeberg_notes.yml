@@ -6,6 +6,8 @@ on:
 permissions:
   contents: read
   deployments: write
+  # Added these permissions for token access
+  actions: read
 
 jobs:
   sync_release_notes:
@@ -28,7 +30,7 @@ jobs:
           while IFS= read -r tag_name; do
             # Check if a release exists on Codeberg
             release_check=$(curl -s -H "Authorization: token ${{ secrets.CODEBERG_TOKEN }}" "https://codeberg.org/api/v1/repos/unwanted9855/blended-strawberry/releases/tags/${tag_name}")
-            
+
             echo "Checking if release for tag $tag_name exists in Codeberg..."
 
             if [[ $(echo "$release_check" | jq -r '.message') == "The target couldn't be found." ]]; then
@@ -55,7 +57,7 @@ jobs:
 
             echo "Actual release notes: $actual_body"
 
-            # Prepare the payload for the update
+            # Prepare the payload for updating the release
             update_data=$(jq -n --arg body "$actual_body" '{body: $body}')
 
             echo "Payload for update: $update_data"
