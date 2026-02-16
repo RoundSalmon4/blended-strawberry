@@ -1,14 +1,6 @@
 version: 2
 updates:
   - package-ecosystem: "github-actions"
-    directory: "/.github/workflows/"
+    directory: "/"
     schedule:
-      interval: "daily"
-    ignore:
-      - dependency-name: "RoundSalmon4/codeberg"
-      - dependency-name: "RoundSalmon4/codeberg_notes" 
-      - dependency-name: "RoundSalmon4/codeberg_old" 
-      - dependency-name: "RoundSalmon4/codeberg_release" 
-      - dependency-name: "RoundSalmon4/all_in_one"
-      - dependency-name: "RoundSalmon4/build" 
-      - dependency-name: "RoundSalmon4/update"
+      interval: daily
