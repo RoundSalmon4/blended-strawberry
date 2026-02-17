@@ -11,27 +11,23 @@ permissions:
   deployments: write
 
 jobs:
-  update:  # Job 1: Update from upstream
+  update:
     name: Update from upstream
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6  
-        with:
-          ref: master
+        uses: actions/checkout@v2
         
       - name: Run Update Action
-        uses: RoundSalmon4/update@master
+        uses: RoundSalmon4/update@master  # Correct format
 
-  modify_git_revision:  # Job 2: Modify INCLUDE_GIT_REVISION
+  modify_git_revision:
     name: Modify Git Revision
     runs-on: ubuntu-latest
-    needs: update  # This job will run after the update job
+    needs: update
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6  
-        with:
-          ref: master
+        uses: actions/checkout@v2
         
       - name: Set INCLUDE_GIT_REVISION to OFF
         run: |
@@ -40,15 +36,13 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: modify_git_revision  # This job will run after modifying git revision
+    needs: modify_git_revision
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6  
-        with:
-          ref: master
+        uses: actions/checkout@v2
 
       - name: Run Build Action
-        uses: RoundSalmon4/build@master
+        uses: RoundSalmon4/build@master  # Correct format
 
   codeberg:
     name: Sync Codeberg Repo
@@ -56,12 +50,10 @@ jobs:
     needs: build
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6  
-        with:
-          ref: master
+        uses: actions/checkout@v2
         
       - name: Run Codeberg Action
-        uses: RoundSalmon4/codeberg@master
+        uses: RoundSalmon4/codeberg@master  # Correct format
 
   codeberg_release:
     name: Add Codeberg Release
@@ -69,12 +61,10 @@ jobs:
     needs: codeberg
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6  
-        with:
-          ref: master
+        uses: actions/checkout@v2
         
       - name: Run Codeberg Release Action
-        uses: RoundSalmon4/codeberg_release@master
+        uses: RoundSalmon4/codeberg_release@master  # Correct format
 
   codeberg_notes:
     name: Add Codeberg Notes
@@ -82,22 +72,18 @@ jobs:
     needs: codeberg_release
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6  
-        with:
-          ref: master
+        uses: actions/checkout@v2
         
       - name: Run Codeberg Notes Action
-        uses: RoundSalmon4/codeberg_notes@master
+        uses: RoundSalmon4/codeberg_notes@master  # Correct format
 
-  reset_git_revision:  # Final job to reset INCLUDE_GIT_REVISION
+  reset_git_revision:
     name: Reset Git Revision
     runs-on: ubuntu-latest
     needs: codeberg_notes
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6  
-        with:
-          ref: master
+        uses: actions/checkout@v2
 
       - name: Set INCLUDE_GIT_REVISION to ON
         run: |
