@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
         
       - name: Run Update Action
         uses: RoundSalmon4/update@master  # Correct format
@@ -27,7 +27,7 @@ jobs:
     needs: update
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
         
       - name: Set INCLUDE_GIT_REVISION to OFF
         run: |
@@ -39,7 +39,7 @@ jobs:
     needs: modify_git_revision
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
 
       - name: Run Build Action
         uses: RoundSalmon4/build@master  # Correct format
@@ -50,7 +50,7 @@ jobs:
     needs: build
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
         
       - name: Run Codeberg Action
         uses: RoundSalmon4/codeberg@master  # Correct format
@@ -61,7 +61,7 @@ jobs:
     needs: codeberg
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
         
       - name: Run Codeberg Release Action
         uses: RoundSalmon4/codeberg_release@master  # Correct format
@@ -72,7 +72,7 @@ jobs:
     needs: codeberg_release
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
         
       - name: Run Codeberg Notes Action
         uses: RoundSalmon4/codeberg_notes@master  # Correct format
@@ -83,7 +83,7 @@ jobs:
     needs: codeberg_notes
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
 
       - name: Set INCLUDE_GIT_REVISION to ON
         run: |
