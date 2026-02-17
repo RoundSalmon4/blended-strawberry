@@ -290,13 +290,16 @@ jobs:
             exit 1
           fi
 
-      - name: Download MSVC runtime
+      - name: Check makensis
         shell: bash
         working-directory: build
-        run: curl -f -O -L https://aka.ms/vc14/vc_redist.$(test "${{ matrix.arch }}" = "x86_64" && echo "x64" || echo "${{ matrix.arch }}").exe
+        run: |
+          command -v makensis && makensis -VERSION || {
+            echo "makensis not found in PATH"; exit 1;
+          }
 
       - name: Create nsis installer
-        shell: cmd
+        shell: bash
         working-directory: build
         run: makensis strawberry.nsi
 
@@ -699,7 +702,6 @@ jobs:
               exit 1
           fi
 
-          # Extract the most recent version from the changelog
           version=$(grep -oP 'Version \K[0-9]+\.[0-9]+\.[0-9]+' "$changelog_file" | head -n 1)
 
           if [ -z "$version" ]; then
@@ -707,7 +709,6 @@ jobs:
               exit 1
           fi
 
-          # Read release notes for the current version
           release_notes=$(awk -v version="$version" '
           BEGIN { found=0; }
           /^Version / {
@@ -722,7 +723,6 @@ jobs:
               release_notes="Changes:\n"
           fi
 
-          # Gather files from the artifacts directory
           while IFS= read -r i; do
             files+=("$i")
           done < <(find artifacts -type f)
