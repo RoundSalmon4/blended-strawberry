@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v2
         
       - name: Run Update Action
-        uses: RoundSalmon4/update@master  # Action format should be correct
+        uses: RoundSalmon4/update@master  # Assuming correct repository
 
   modify_git_revision:
     name: Modify Git Revision
@@ -42,7 +42,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Run Build Action
-        uses: RoundSalmon4/blended-strawberry@master  # Pointing to the correct repository
+        uses: RoundSalmon4/blended-strawberry@master  # Updated correctly
 
   codeberg:
     name: Sync Codeberg Repo
@@ -53,7 +53,7 @@ jobs:
         uses: actions/checkout@v2
         
       - name: Run Codeberg Action
-        uses: RoundSalmon4/codeberg@master  # Assuming correct repo
+        uses: RoundSalmon4/codeberg@master  # Assuming correct repository
 
   codeberg_release:
     name: Add Codeberg Release
@@ -64,7 +64,7 @@ jobs:
         uses: actions/checkout@v2
         
       - name: Run Codeberg Release Action
-        uses: RoundSalmon4/codeberg_release@master  # Assuming correct repo
+        uses: RoundSalmon4/codeberg_release@master  # Assuming correct repository
 
   codeberg_notes:
     name: Add Codeberg Notes
@@ -75,7 +75,7 @@ jobs:
         uses: actions/checkout@v2
         
       - name: Run Codeberg Notes Action
-        uses: RoundSalmon4/codeberg_notes@master  # Assuming correct repo
+        uses: RoundSalmon4/codeberg_notes@master  # Assuming correct repository
 
   reset_git_revision:
     name: Reset Git Revision
