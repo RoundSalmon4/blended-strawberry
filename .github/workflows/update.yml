@@ -12,63 +12,107 @@ jobs:
     permissions:
       contents: write  # Allow the workflow to write to the repository
 
+    env:
+      REPO_DIR: repo
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           repository: RoundSalmon4/blended-strawberry
           token: ${{ secrets.GITHUB_TOKEN }}
-          path: ./repo
+          fetch-depth: 0
+          path: ./${{ env.REPO_DIR }}
 
-      - name: Change directory to repo
-        run: cd ./repo
+      # (No need for a standalone "cd"; we use working-directory on each step.)
 
       - name: Add upstream remote
+        shell: bash
+        working-directory: ./${{ env.REPO_DIR }}
         run: |
-          cd ./repo
           git remote add upstream https://github.com/strawberrymusicplayer/strawberry || echo "Upstream remote already exists."
 
       - name: Fetch upstream changes
-        run: |
-          cd ./repo
-          git fetch upstream
+        shell: bash
+        working-directory: ./${{ env.REPO_DIR }}
+        run: git fetch upstream
 
-      - name: Check out master branch
+      - name: Check out target branch (ref-aware)
+        shell: bash
+        working-directory: ./${{ env.REPO_DIR }}
         run: |
-          cd ./repo
-          git checkout master
+          # Resolve the branch we should operate on:
+          # 1) TARGET_BRANCH (if set by a caller/orchestrator)
+          # 2) GITHUB_REF_NAME at runtime
+          # 3) github.ref_name as a last resort
+          TARGET="${TARGET_BRANCH:-${GITHUB_REF_NAME:-${{ github.ref_name }}}}"
+          echo "Checking out target branch: ${TARGET}"
+          git checkout -B "${TARGET}"
 
       - name: Configure Git user
+        shell: bash
+        working-directory: ./${{ env.REPO_DIR }}
         run: |
-          cd ./repo
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
       - name: Checkout upstream changes excluding workflows
+        shell: bash
+        working-directory: ./${{ env.REPO_DIR }}
         run: |
-          cd ./repo
+          # Bring in upstream/master but exclude workflows and NOTICE.md
           git checkout upstream/master -- . ':!/.github/workflows/*' ':!NOTICE.md'
 
       - name: Add your notice to README.md
+        shell: bash
+        working-directory: ./${{ env.REPO_DIR }}
         run: |
-          cd ./repo
           echo -e "# UNOFFICIAL repository for building macOS and Windows versions of the Strawberry Music Player\n\n$(cat README.md)" > README.md
 
       - name: Add changes to staging
+        shell: bash
+        working-directory: ./${{ env.REPO_DIR }}
         run: |
-          cd ./repo
           git add README.md  # Only stage README.md for commit
 
       - name: Commit changes
+        shell: bash
+        working-directory: ./${{ env.REPO_DIR }}
         run: |
-          cd ./repo
           # Fetch the latest upstream commit message
-          UPSTREAM_MESSAGE=$(git log --format=%B -n 1 upstream/master)
+          UPSTREAM_MESSAGE=$(git log --format=%B -n 1 upstream/master || echo "Update from upstream")
           git commit -m "$UPSTREAM_MESSAGE" || echo "No changes to commit."
 
-      - name: Push changes if any
-        run: |
-          cd ./repo
-          git push origin master || echo "Push failed, no changes to push."
+      # ─────────────── Option A + B: guarded, ref-aware push ───────────────
+
+      - name: Push changes if any (guarded & ref-aware)
+        if: ${{ vars.NO_SIDE_EFFECTS != 'true' }}
+        shell: bash
+        working-directory: ./${{ env.REPO_DIR }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional safety: default true blocks pushes to master unless explicitly disabled
+          BLOCK_PUSH_TO_MASTER: ${{ vars.BLOCK_PUSH_TO_MASTER }}
+        run: |
+          # Resolve target ref (prefer explicit TARGET_BRANCH, else triggering ref)
+          TARGET="${TARGET_BRANCH:-${GITHUB_REF_NAME:-${{ github.ref_name }}}}"
+          echo "Resolved TARGET=${TARGET}"
+
+          # Safety: refuse to push to master when BLOCK_PUSH_TO_MASTER=true
+          if [ "${BLOCK_PUSH_TO_MASTER:-true}" = "true" ] && [ "${TARGET}" = "master" ]; then
+            echo "BLOCK_PUSH_TO_MASTER=true → refusing to push to 'master'."
+            exit 0
+          fi
+
+          # Do not attempt to push to a tag ref name
+          if [ "${GITHUB_REF_TYPE:-branch}" = "tag" ]; then
+            echo "Running on a tag; skipping push."
+            exit 0
+          fi
+
+          echo "Pushing HEAD to origin ${TARGET}"
+          git push origin "HEAD:${TARGET}" || echo "Push failed or nothing to push."
+
+      - name: "[TEST] Skipping push (NO_SIDE_EFFECTS=true)"
+        if: ${{ vars.NO_SIDE_EFFECTS == 'true' }}
+        shell: bash
+        run: echo "[TEST] NO_SIDE_EFFECTS=true → push step skipped"
