@@ -104,7 +104,7 @@ jobs:
     needs: echo_flags
     steps:
       - name: Checkout repo at REF
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ env.REF }}
           fetch-depth: 1
@@ -188,7 +188,7 @@ jobs:
         run: echo "[DRY RUN] Would modify cmake/Version.cmake to set INCLUDE_GIT_REVISION=OFF"
       - name: Checkout repository
         if: ${{ env.DRY_RUN != 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ env.REF }}
       - name: Apply change
@@ -352,7 +352,7 @@ jobs:
         run: echo "[DRY RUN] Would restore cmake/Version.cmake to set INCLUDE_GIT_REVISION=ON"
       - name: Checkout repository
         if: ${{ env.DRY_RUN != 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ env.REF }}
       - name: Apply change
