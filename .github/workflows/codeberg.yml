@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository with full history
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -28,14 +28,62 @@ jobs:
           
       - name: Remove LFS Tracking
         run: |
-          git lfs uninstall
-          git lfs prune  # Optional: Clear any cached LFS files
+          git lfs uninstall || true
+          git lfs prune || true  # Optional: Clear any cached LFS files
 
-      - name: Push to Codeberg
+      # ───────────────────────────────────────────────────────────────
+      # Option A+B: Guarded, ref‑aware Codeberg push
+      # ───────────────────────────────────────────────────────────────
+
+      - name: "[TEST] Skipping Codeberg push (NO_SIDE_EFFECTS=true)"
+        if: ${{ vars.NO_SIDE_EFFECTS == 'true' }}
+        run: echo "[TEST] NO_SIDE_EFFECTS=true → Codeberg push step skipped"
+
+      - name: Push to Codeberg (guarded & ref-aware)
+        if: ${{ vars.NO_SIDE_EFFECTS != 'true' }}
         env:
           CODEBERG_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
+          # Optional safety: default true blocks pushes to master unless explicitly disabled
+          BLOCK_PUSH_TO_MASTER: ${{ vars.BLOCK_PUSH_TO_MASTER }}
+        shell: bash
         run: |
-          git remote add codeberg https://$CODEBERG_TOKEN@codeberg.org/unwanted9855/blended-strawberry.git
-          git fetch codeberg
-          git merge codeberg/master --allow-unrelated-histories || true
-          git push codeberg master
+          set -euo pipefail
+
+          # Resolve target ref:
+          # 1) TARGET_BRANCH (if provided by an orchestrator/caller)
+          # 2) GITHUB_REF_NAME at runtime (the branch or tag that triggered this run)
+          # 3) github.ref_name as a last-resort fallback
+          TARGET="${TARGET_BRANCH:-${GITHUB_REF_NAME:-${{ github.ref_name }}}}"
+          echo "Resolved TARGET=${TARGET}"
+
+          # Optional safety: refuse to push to master unless explicitly allowed
+          if [ "${BLOCK_PUSH_TO_MASTER:-true}" = "true" ] && [ "${TARGET}" = "master" ]; then
+            echo "BLOCK_PUSH_TO_MASTER=true → refusing to push to 'master'."
+            exit 0
+          fi
+
+          # Tag guard: do not attempt to push to a tag name
+          if [ "${GITHUB_REF_TYPE:-branch}" = "tag" ]; then
+            echo "Running on a tag ref; skipping Codeberg push."
+            exit 0
+          fi
+
+          # Add Codeberg remote (token auth)
+          git remote remove codeberg 2>/dev/null || true
+          git remote add codeberg "https://${CODEBERG_TOKEN}@codeberg.org/unwanted9855/blended-strawberry.git"
+
+          # Make sure local is on the TARGET branch (create/update as needed)
+          git checkout -B "${TARGET}"
+
+          # Fetch Codeberg and (optionally) merge its TARGET branch if it exists
+          git fetch codeberg || true
+          if git show-ref --verify --quiet "refs/remotes/codeberg/${TARGET}"; then
+            echo "Merging codeberg/${TARGET} into local ${TARGET} (allow unrelated histories)"
+            git merge "codeberg/${TARGET}" --allow-unrelated-histories || true
+          else
+            echo "No codeberg/${TARGET} branch found; skipping merge."
+          fi
+
+          # Push HEAD to Codeberg TARGET branch
+          echo "Pushing HEAD to codeberg ${TARGET}"
+          git push codeberg "HEAD:${TARGET}"
