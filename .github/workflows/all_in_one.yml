@@ -21,13 +21,11 @@ permissions:
   checks: write
   deployments: write
 
-# Global flags visible to every job
 env:
   TEST_MODE: ${{ inputs.test_mode }}
   DRY_RUN: ${{ inputs.dry_run }}
 
 jobs:
-  # 1) Update (reusable workflow)
   update:
     name: Update from upstream
     uses: RoundSalmon4/blended-strawberry/.github/workflows/update.yml@master
@@ -35,7 +33,6 @@ jobs:
       dry_run: ${{ inputs.dry_run }}
     secrets: inherit
 
-  # 2) Modify INCLUDE_GIT_REVISION (inline)
   modify_git_revision:
     name: Modify Git Revision
     runs-on: ubuntu-latest
@@ -45,13 +42,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: master
-
       - name: Set INCLUDE_GIT_REVISION to OFF
         shell: bash
         run: |
           sed -i 's/set(INCLUDE_GIT_REVISION ON)/set(INCLUDE_GIT_REVISION OFF)/' cmake/Version.cmake
 
-  # 3) Build (reusable workflow)
   build:
     name: Build
     needs: modify_git_revision
@@ -61,17 +56,14 @@ jobs:
       build_type: "Release"
     secrets: inherit
 
-  # 4) Sync Codeberg (reusable workflow)
   codeberg:
     name: Sync Codeberg Repo
     needs: build
     uses: RoundSalmon4/blended-strawberry/.github/workflows/codeberg.yml@master
     with:
       dry_run: ${{ inputs.dry_run }}
-      # codeberg_url: "https://codeberg.org/you/repo.git"  # <-- set if your workflow expects it
     secrets: inherit
 
-  # 5) Codeberg Release (reusable workflow)
   codeberg_release:
     name: Add Codeberg Release
     needs: codeberg
@@ -83,7 +75,6 @@ jobs:
       notes_path: "CHANGELOG.md"
     secrets: inherit
 
-  # 6) Codeberg Notes (reusable workflow)
   codeberg_notes:
     name: Add Codeberg Notes
     needs: codeberg_release
@@ -94,7 +85,6 @@ jobs:
       notes_path: "CHANGELOG.md"
     secrets: inherit
 
-  # 7) Reset INCLUDE_GIT_REVISION (inline)
   reset_git_revision:
     name: Reset Git Revision
     runs-on: ubuntu-latest
@@ -104,13 +94,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: master
-
       - name: Set INCLUDE_GIT_REVISION to ON
         shell: bash
         run: |
           sed -i 's/set(INCLUDE_GIT_REVISION OFF)/set(INCLUDE_GIT_REVISION ON)/' cmake/Version.cmake
 
-  # Final: Global test-mode gate — intentionally fail at the very end if enabled
   fail_if_test_mode:
     name: Fail run if global test mode is enabled
     runs-on: ubuntu-latest
