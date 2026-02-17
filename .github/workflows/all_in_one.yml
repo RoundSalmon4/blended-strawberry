@@ -1,3 +1,63 @@
+# ============================================================
+# BLENDED-STRAWBERRY CI/CD ORCHESTRATOR — QUICK START GUIDE
+#
+# This orchestrator runs these workflows in order:
+#   update → modify_git_revision → build → codeberg → codeberg_release → codeberg_notes → reset_git_revision
+#
+# ---------- GLOBAL VARIABLES (set once in GitHub) ----------
+# Go to: Settings → Secrets and variables → Actions → Variables
+#
+# 1) NO_SIDE_EFFECTS
+#    - true  = Workflows run fully, but SKIP pushes / release creation / codeberg sync / notes updates.
+#    - false = Workflows perform real pushes/releases/syncs.
+#
+# 2) BLOCK_PUSH_TO_MASTER
+#    - true  = Prevents any workflow using a git push from pushing to master accidentally.
+#    - false = Allows pushes to master (production).
+#
+# ---------- RUN MODES ----------
+#
+# MODE A — DRY RUN ONLY (PLAN MODE)
+#   dry_run = true
+#   test_mode = false
+#   → No workflows dispatched.
+#   → Workflow prints “Would dispatch…” messages only.
+#   → No side effects.
+#
+# MODE B — DRY RUN + INTENTIONAL FAILURE
+#   dry_run = true
+#   test_mode = true
+#   → Same as above, but orchestrator FAILS at the end on purpose.
+#
+# MODE C — FULL TEST RUN (SAFE MODE)  *** MOST IMPORTANT MODE ***
+#   dry_run = false
+#   test_mode = true
+#   NO_SIDE_EFFECTS = true   (repo variable)
+#   → All workflows are actually dispatched.
+#   → All build steps run (CMake, compile, downloads, loops, merges).
+#   → All side-effecting steps are SKIPPED, with visible “[TEST]” messages.
+#   → Orchestrator FAILS at the end intentionally so branch protections do not treat run as “production”.
+#   → Zero risk: no pushes, no releases, no notes posted.
+#
+# MODE D — FULL PRODUCTION RUN
+#   dry_run = false
+#   test_mode = false
+#   NO_SIDE_EFFECTS = false
+#   BLOCK_PUSH_TO_MASTER = false (optional)
+#   → Real CI/CD: runs everything and performs all side effects.
+#   → Pushes happen.
+#   → Codeberg release is created.
+#   → Assets uploaded.
+#   → Notes synced.
+#   → Final result: SUCCESS.
+#
+# ---------- BEST PRACTICES ----------
+# • For safe end‑to‑end testing, always use MODE C.
+# • For checking orchestrator logic only, use MODE A.
+# • For actual releases, use MODE D.
+# • Leave BLOCK_PUSH_TO_MASTER=true unless you are 100% sure you want to write to master.
+#
+# ============================================================
 name: All-in-One Orchestrator
 
 on:
