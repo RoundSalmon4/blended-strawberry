@@ -7,7 +7,7 @@ on:
         description: "Intentionally fail after everything runs (prevents successful completion)."
         type: boolean
         required: false
-        default: false
+        default: true
       dry_run:
         description: "Do not dispatch downstream workflows; only print what would happen."
         type: boolean
