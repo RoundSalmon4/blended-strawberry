@@ -14,12 +14,7 @@ jobs:
   update:
     name: Update from upstream
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v6
-        
-      - name: Run Update Action
-        uses: RoundSalmon4/blended-strawberry/.github/workflows/update.yml@master  # Action using correct path
+    uses: RoundSalmon4/blended-strawberry/.github/workflows/update.yml@master
 
   modify_git_revision:
     name: Modify Git Revision
@@ -27,7 +22,7 @@ jobs:
     needs: update
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v2
         
       - name: Set INCLUDE_GIT_REVISION to OFF
         run: |
@@ -39,10 +34,10 @@ jobs:
     needs: modify_git_revision
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v2
 
       - name: Run Build Action
-        uses: RoundSalmon4/blended-strawberry/.github/workflows/build.yml@master  # Updated correct path
+        uses: RoundSalmon4/blended-strawberry/.github/workflows/build.yml@master
 
   codeberg:
     name: Sync Codeberg Repo
@@ -50,10 +45,10 @@ jobs:
     needs: build
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v2
         
       - name: Run Codeberg Action
-        uses: RoundSalmon4/blended-strawberry/.github/workflows/codeberg.yml@master  # Updated correct path
+        uses: RoundSalmon4/blended-strawberry/.github/workflows/codeberg.yml@master
 
   codeberg_release:
     name: Add Codeberg Release
@@ -61,10 +56,10 @@ jobs:
     needs: codeberg
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v2
         
       - name: Run Codeberg Release Action
-        uses: RoundSalmon4/blended-strawberry/.github/workflows/codeberg_release.yml@master  # Updated correct path
+        uses: RoundSalmon4/blended-strawberry/.github/workflows/codeberg_release.yml@master
 
   codeberg_notes:
     name: Add Codeberg Notes
@@ -72,10 +67,10 @@ jobs:
     needs: codeberg_release
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v2
         
       - name: Run Codeberg Notes Action
-        uses: RoundSalmon4/blended-strawberry/.github/workflows/codeberg_notes.yml@master  # Updated correct path
+        uses: RoundSalmon4/blended-strawberry/.github/workflows/codeberg_notes.yml@master
 
   reset_git_revision:
     name: Reset Git Revision
@@ -83,7 +78,7 @@ jobs:
     needs: codeberg_notes
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v2
 
       - name: Set INCLUDE_GIT_REVISION to ON
         run: |
@@ -94,5 +89,5 @@ jobs:
     runs-on: ubuntu-latest
     needs: [update, modify_git_revision, build, codeberg, codeberg_release, codeberg_notes, reset_git_revision]
     steps:
-      - name: Exit
-        run: exit 1  # This will cause the job to fail
+      - name: Fail Intentionally
+        run: exit 1  # Causes the workflow to fail intentionally
