@@ -15,8 +15,8 @@ on:
         default: true
 
 permissions:
-  actions: write   # required to dispatch and read workflow runs
-  contents: write  # inline steps may modify files if you later add commits
+  actions: write   # dispatch / inspect workflow runs
+  contents: write  # inline jobs could write if you later add commits
   checks: read
   deployments: write
 
@@ -36,17 +36,58 @@ jobs:
         run: |
           echo "TEST_MODE=${{ env.TEST_MODE }}"
           echo "DRY_RUN=${{ env.DRY_RUN }}"
+          echo "REF=${{ env.REF }}"
 
-  # A. UPDATE
-  dispatch_update:
-    name: Dispatch update.yml and wait
+  validate_files:
+    name: Validate workflow files exist on ref
     runs-on: ubuntu-latest
     needs: echo_flags
     steps:
-      - name: Dry-run no-op (update)
+      - name: Checkout repo at REF
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REF }}
+          fetch-depth: 1
+      - name: List workflows (depth 2)
+        run: |
+          echo "Repo root: $(pwd)"
+          echo "Files under .github/workflows:"
+          find .github/workflows -maxdepth 2 -type f -print | sort || true
+      - name: Check required files
+        shell: bash
+        run: |
+          set -e
+          missing=0
+          for f in \
+            ".github/workflows/update.yml" \
+            ".github/workflows/build.yml" \
+            ".github/workflows/codeberg.yml" \
+            ".github/workflows/codeberg_release.yml" \
+            ".github/workflows/codeberg_notes.yml"
+          do
+            if [ -f "$f" ]; then
+              echo "[OK] Found $f"
+            else
+              echo "[MISSING] $f"
+              missing=1
+            fi
+          done
+          if [ $missing -ne 0 ]; then
+            echo "::warning::One or more required workflow files are missing on ref '${{ env.REF }}'. Dry-run will still proceed, but real dispatch will fail."
+          fi
+
+  # Helper notes:
+  # - Every dispatch job has a dry-run echo so chain visibility is guaranteed.
+  # - Real dispatch uses actions/github-script and waits for completion.
+
+  dispatch_update:
+    name: A) update.yml
+    runs-on: ubuntu-latest
+    needs: validate_files
+    steps:
+      - name: [DRY RUN] Would dispatch update.yml
         if: ${{ env.DRY_RUN == 'true' }}
         run: echo "[DRY RUN] Would dispatch .github/workflows/update.yml on ref ${{ env.REF }}"
-
       - name: Dispatch and wait (update.yml)
         if: ${{ env.DRY_RUN != 'true' }}
         uses: actions/github-script@v7
@@ -58,85 +99,54 @@ jobs:
             const owner = process.env.OWNER;
             const repo  = process.env.REPO;
             const ref   = process.env.REF;
-            const workflowFile = process.env.WORKFLOW_FILE;
-
-            const wait = ms => new Promise(res => setTimeout(res, ms));
-            const timeoutMs  = 30 * 60 * 1000; // 30 minutes
-            const pollEvery  = 10 * 1000;      // 10 seconds
-            const deadline   = Date.now() + timeoutMs;
-            const startAtIso = new Date().toISOString();
-
-            // Dispatch
-            await github.rest.actions.createWorkflowDispatch({
-              owner, repo, workflow_id: workflowFile, ref, inputs: {}
-            });
-
-            // Find the new run created after startAtIso
-            let runId = null;
-            while (Date.now() < deadline && !runId) {
-              const runs = await github.paginate(
-                github.rest.actions.listWorkflowRuns,
-                { owner, repo, workflow_id: workflowFile, event: 'workflow_dispatch', branch: ref, per_page: 50 }
-              );
-              const candidate = runs.find(r => new Date(r.created_at) >= new Date(startAtIso));
-              if (candidate) {
-                runId = candidate.id;
-                core.info(`Dispatched run id: ${runId}`);
-                break;
-              }
-              core.info('Waiting for dispatched run to be created...');
-              await wait(pollEvery);
+            const wf    = process.env.WORKFLOW_FILE;
+            const wait = ms => new Promise(r => setTimeout(r, ms));
+            const timeout = 30*60*1000, poll=10000, dl=Date.now()+timeout;
+            const startAt = new Date().toISOString();
+            await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: wf, ref, inputs: {} });
+            let runId=null;
+            while(Date.now()<dl && !runId){
+              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, { owner, repo, workflow_id: wf, event:'workflow_dispatch', branch: ref, per_page:50 });
+              const c = runs.find(r => new Date(r.created_at) >= new Date(startAt));
+              if (c){ runId=c.id; core.info(`run=${runId}`); break; }
+              await wait(poll);
             }
-            if (!runId) {
-              core.setFailed(`Timed out waiting for ${workflowFile} run to appear`);
-              return;
-            }
-
-            // Wait for completion
-            while (Date.now() < deadline) {
+            if(!runId){ core.setFailed(`Timed out waiting for ${wf} run`); return; }
+            while(Date.now()<dl){
               const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
-              core.info(`status=${run.status}, conclusion=${run.conclusion ?? ''}`);
-              if (run.status === 'completed') {
-                if (run.conclusion !== 'success') core.setFailed(`${workflowFile} concluded: ${run.conclusion}`);
-                return;
-              }
-              await wait(pollEvery);
+              if(run.status==='completed'){ if(run.conclusion!=='success') core.setFailed(`${wf} concluded: ${run.conclusion}`); return; }
+              await wait(poll);
             }
-            core.setFailed(`Timed out waiting for ${workflowFile} to complete`);
+            core.setFailed(`Timed out waiting for ${wf} to complete`);
 
-  # B. Modify INCLUDE_GIT_REVISION (inline)
   modify_git_revision:
-    name: Modify Git Revision
+    name: B) Modify Git Revision
     runs-on: ubuntu-latest
     needs: dispatch_update
     steps:
-      - name: Dry-run no-op (modify)
+      - name: [DRY RUN] Would set INCLUDE_GIT_REVISION=OFF
         if: ${{ env.DRY_RUN == 'true' }}
         run: echo "[DRY RUN] Would modify cmake/Version.cmake to set INCLUDE_GIT_REVISION=OFF"
-
-      - name: Checkout Code
+      - name: Checkout repository
         if: ${{ env.DRY_RUN != 'true' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ env.REF }}
-
-      - name: Set INCLUDE_GIT_REVISION to OFF
+      - name: Apply change
         if: ${{ env.DRY_RUN != 'true' }}
         shell: bash
         run: |
           sed -i 's/set(INCLUDE_GIT_REVISION ON)/set(INCLUDE_GIT_REVISION OFF)/' cmake/Version.cmake
-          echo "File updated. (Commit/push omitted to mirror your earlier flow)"
+          echo "Modified Version.cmake (no commit/push here)."
 
-  # C. BUILD
   dispatch_build:
-    name: Dispatch build.yml and wait
+    name: C) build.yml
     runs-on: ubuntu-latest
     needs: modify_git_revision
     steps:
-      - name: Dry-run no-op (build)
+      - name: [DRY RUN] Would dispatch build.yml
         if: ${{ env.DRY_RUN == 'true' }}
         run: echo "[DRY RUN] Would dispatch .github/workflows/build.yml on ref ${{ env.REF }}"
-
       - name: Dispatch and wait (build.yml)
         if: ${{ env.DRY_RUN != 'true' }}
         uses: actions/github-script@v7
@@ -145,45 +155,34 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
-            const owner = process.env.OWNER, repo = process.env.REPO, ref = process.env.REF;
-            const workflowFile = process.env.WORKFLOW_FILE;
-            const wait = ms => new Promise(res => setTimeout(res, ms));
-            const timeoutMs=30*60*1000, pollEvery=10000, deadline=Date.now()+timeoutMs;
-            const startAtIso = new Date().toISOString();
-
-            await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: workflowFile, ref, inputs: {} });
-
-            let runId = null;
-            while (Date.now() < deadline && !runId) {
-              const runs = await github.paginate(
-                github.rest.actions.listWorkflowRuns,
-                { owner, repo, workflow_id: workflowFile, event: 'workflow_dispatch', branch: ref, per_page: 50 }
-              );
-              const candidate = runs.find(r => new Date(r.created_at) >= new Date(startAtIso));
-              if (candidate) runId = candidate.id; else await wait(pollEvery);
+            const owner=process.env.OWNER, repo=process.env.REPO, ref=process.env.REF, wf=process.env.WORKFLOW_FILE;
+            const wait=ms=>new Promise(r=>setTimeout(r,ms));
+            const timeout=30*60*1000, poll=10000, dl=Date.now()+timeout;
+            const startAt=new Date().toISOString();
+            await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: wf, ref, inputs:{} });
+            let runId=null;
+            while(Date.now()<dl && !runId){
+              const runs=await github.paginate(github.rest.actions.listWorkflowRuns,{ owner, repo, workflow_id:wf, event:'workflow_dispatch', branch:ref, per_page:50 });
+              const c=runs.find(r=>new Date(r.created_at)>=new Date(startAt));
+              if(c){ runId=c.id; core.info(`run=${runId}`); break; }
+              await wait(poll);
             }
-            if (!runId) { core.setFailed(`Timed out waiting for ${workflowFile} run`); return; }
-
-            while (Date.now() < deadline) {
-              const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
-              if (run.status === 'completed') {
-                if (run.conclusion !== 'success') core.setFailed(`${workflowFile} concluded: ${run.conclusion}`);
-                return;
-              }
-              await wait(pollEvery);
+            if(!runId){ core.setFailed(`Timed out waiting for ${wf} run`); return; }
+            while(Date.now()<dl){
+              const { data: run }=await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+              if(run.status==='completed'){ if(run.conclusion!=='success') core.setFailed(`${wf} concluded: ${run.conclusion}`); return; }
+              await wait(poll);
             }
-            core.setFailed(`Timed out waiting for ${workflowFile} to complete`);
+            core.setFailed(`Timed out waiting for ${wf} to complete`);
 
-  # D. CODEBERG SYNC
   dispatch_codeberg:
-    name: Dispatch codeberg.yml and wait
+    name: D) codeberg.yml
     runs-on: ubuntu-latest
     needs: dispatch_build
     steps:
-      - name: Dry-run no-op (codeberg)
+      - name: [DRY RUN] Would dispatch codeberg.yml
         if: ${{ env.DRY_RUN == 'true' }}
         run: echo "[DRY RUN] Would dispatch .github/workflows/codeberg.yml on ref ${{ env.REF }}"
-
       - name: Dispatch and wait (codeberg.yml)
         if: ${{ env.DRY_RUN != 'true' }}
         uses: actions/github-script@v7
@@ -192,45 +191,34 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
-            const owner = process.env.OWNER, repo = process.env.REPO, ref = process.env.REF;
-            const workflowFile = process.env.WORKFLOW_FILE;
-            const wait = ms => new Promise(res => setTimeout(res, ms));
-            const timeoutMs=30*60*1000, pollEvery=10000, deadline=Date.now()+timeoutMs;
-            const startAtIso = new Date().toISOString();
-
-            await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: workflowFile, ref, inputs: {} });
-
-            let runId = null;
-            while (Date.now() < deadline && !runId) {
-              const runs = await github.paginate(
-                github.rest.actions.listWorkflowRuns,
-                { owner, repo, workflow_id: workflowFile, event: 'workflow_dispatch', branch: ref, per_page: 50 }
-              );
-              const candidate = runs.find(r => new Date(r.created_at) >= new Date(startAtIso));
-              if (candidate) runId = candidate.id; else await wait(pollEvery);
+            const owner=process.env.OWNER, repo=process.env.REPO, ref=process.env.REF, wf=process.env.WORKFLOW_FILE;
+            const wait=ms=>new Promise(r=>setTimeout(r,ms));
+            const timeout=30*60*1000, poll=10000, dl=Date.now()+timeout;
+            const startAt=new Date().toISOString();
+            await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: wf, ref, inputs:{} });
+            let runId=null;
+            while(Date.now()<dl && !runId){
+              const runs=await github.paginate(github.rest.actions.listWorkflowRuns,{ owner, repo, workflow_id:wf, event:'workflow_dispatch', branch:ref, per_page:50 });
+              const c=runs.find(r=>new Date(r.created_at)>=new Date(startAt));
+              if(c){ runId=c.id; core.info(`run=${runId}`); break; }
+              await wait(poll);
             }
-            if (!runId) { core.setFailed(`Timed out waiting for ${workflowFile} run`); return; }
-
-            while (Date.now() < deadline) {
-              const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
-              if (run.status === 'completed') {
-                if (run.conclusion !== 'success') core.setFailed(`${workflowFile} concluded: ${run.conclusion}`);
-                return;
-              }
-              await wait(pollEvery);
+            if(!runId){ core.setFailed(`Timed out waiting for ${wf} run`); return; }
+            while(Date.now()<dl){
+              const { data: run }=await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+              if(run.status==='completed'){ if(run.conclusion!=='success') core.setFailed(`${wf} concluded: ${run.conclusion}`); return; }
+              await wait(poll);
             }
-            core.setFailed(`Timed out waiting for ${workflowFile} to complete`);
+            core.setFailed(`Timed out waiting for ${wf} to complete`);
 
-  # E. CODEBERG RELEASE
   dispatch_codeberg_release:
-    name: Dispatch codeberg_release.yml and wait
+    name: E) codeberg_release.yml
     runs-on: ubuntu-latest
     needs: dispatch_codeberg
     steps:
-      - name: Dry-run no-op (codeberg_release)
+      - name: [DRY RUN] Would dispatch codeberg_release.yml
         if: ${{ env.DRY_RUN == 'true' }}
         run: echo "[DRY RUN] Would dispatch .github/workflows/codeberg_release.yml on ref ${{ env.REF }}"
-
       - name: Dispatch and wait (codeberg_release.yml)
         if: ${{ env.DRY_RUN != 'true' }}
         uses: actions/github-script@v7
@@ -239,3 +227,102 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
+            const owner=process.env.OWNER, repo=process.env.REPO, ref=process.env.REF, wf=process.env.WORKFLOW_FILE;
+            const wait=ms=>new Promise(r=>setTimeout(r,ms));
+            const timeout=30*60*1000, poll=10000, dl=Date.now()+timeout;
+            const startAt=new Date().toISOString();
+            await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: wf, ref, inputs:{} });
+            let runId=null;
+            while(Date.now()<dl && !runId){
+              const runs=await github.paginate(github.rest.actions.listWorkflowRuns,{ owner, repo, workflow_id:wf, event:'workflow_dispatch', branch:ref, per_page:50 });
+              const c=runs.find(r=>new Date(r.created_at)>=new Date(startAt));
+              if(c){ runId=c.id; core.info(`run=${runId}`); break; }
+              await wait(poll);
+            }
+            if(!runId){ core.setFailed(`Timed out waiting for ${wf} run`); return; }
+            while(Date.now()<dl){
+              const { data: run }=await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+              if(run.status==='completed'){ if(run.conclusion!=='success') core.setFailed(`${wf} concluded: ${run.conclusion}`); return; }
+              await wait(poll);
+            }
+            core.setFailed(`Timed out waiting for ${wf} to complete`);
+
+  dispatch_codeberg_notes:
+    name: F) codeberg_notes.yml
+    runs-on: ubuntu-latest
+    needs: dispatch_codeberg_release
+    steps:
+      - name: [DRY RUN] Would dispatch codeberg_notes.yml
+        if: ${{ env.DRY_RUN == 'true' }}
+        run: echo "[DRY RUN] Would dispatch .github/workflows/codeberg_notes.yml on ref ${{ env.REF }}"
+      - name: Dispatch and wait (codeberg_notes.yml)
+        if: ${{ env.DRY_RUN != 'true' }}
+        uses: actions/github-script@v7
+        env:
+          WORKFLOW_FILE: .github/workflows/codeberg_notes.yml
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const owner=process.env.OWNER, repo=process.env.REPO, ref=process.env.REF, wf=process.env.WORKFLOW_FILE;
+            const wait=ms=>new Promise(r=>setTimeout(r,ms));
+            const timeout=30*60*1000, poll=10000, dl=Date.now()+timeout;
+            const startAt=new Date().toISOString();
+            await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: wf, ref, inputs:{} });
+            let runId=null;
+            while(Date.now()<dl && !runId){
+              const runs=await github.paginate(github.rest.actions.listWorkflowRuns,{ owner, repo, workflow_id:wf, event:'workflow_dispatch', branch:ref, per_page:50 });
+              const c=runs.find(r=>new Date(r.created_at)>=new Date(startAt));
+              if(c){ runId=c.id; core.info(`run=${runId}`); break; }
+              await wait(poll);
+            }
+            if(!runId){ core.setFailed(`Timed out waiting for ${wf} run`); return; }
+            while(Date.now()<dl){
+              const { data: run }=await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+              if(run.status==='completed'){ if(run.conclusion!=='success') core.setFailed(`${wf} concluded: ${run.conclusion}`); return; }
+              await wait(poll);
+            }
+            core.setFailed(`Timed out waiting for ${wf} to complete`);
+
+  reset_git_revision:
+    name: G) Reset Git Revision
+    runs-on: ubuntu-latest
+    needs: dispatch_codeberg_notes
+    steps:
+      - name: [DRY RUN] Would set INCLUDE_GIT_REVISION=ON
+        if: ${{ env.DRY_RUN == 'true' }}
+        run: echo "[DRY RUN] Would restore cmake/Version.cmake to set INCLUDE_GIT_REVISION=ON"
+      - name: Checkout repository
+        if: ${{ env.DRY_RUN != 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REF }}
+      - name: Apply change
+        if: ${{ env.DRY_RUN != 'true' }}
+        shell: bash
+        run: |
+          sed -i 's/set(INCLUDE_GIT_REVISION OFF)/set(INCLUDE_GIT_REVISION ON)/' cmake/Version.cmake
+          echo "Modified Version.cmake (no commit/push here)."
+
+  fail_if_test_mode:
+    name: H) Fail run if TEST_MODE is true
+    runs-on: ubuntu-latest
+    needs:
+      - dispatch_update
+      - modify_git_revision
+      - dispatch_build
+      - dispatch_codeberg
+      - dispatch_codeberg_release
+      - dispatch_codeberg_notes
+      - reset_git_revision
+    if: always()
+    steps:
+      - name: Check TEST_MODE and optionally fail
+        shell: bash
+        run: |
+          echo "TEST_MODE=${{ env.TEST_MODE }}"
+          if [ "${{ env.TEST_MODE }}" = "true" ]; then
+            echo "Global test mode enabled: intentionally failing at the end."
+            exit 1
+          else
+            echo "Global test mode disabled: finishing successfully."
+          fi
