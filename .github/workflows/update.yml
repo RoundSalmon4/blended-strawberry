@@ -1,6 +1,7 @@
 name: Update from Upstream
 
 on:
+  workflow_call:
   schedule:
     - cron: '0 0 * * *'  # This runs the action every day at midnight UTC
   workflow_dispatch:  # Allows manual triggering of the workflow
