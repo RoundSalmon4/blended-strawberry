@@ -21,7 +21,7 @@ permissions:
   checks: write
   deployments: write
 
-# ── Global env so every job can read the same flags ────────────────────────────
+# Global flags visible to every job
 env:
   TEST_MODE: ${{ inputs.test_mode }}
   DRY_RUN: ${{ inputs.dry_run }}
@@ -36,10 +36,16 @@ jobs:
         with:
           ref: master
 
+      # (Optional) quick log of global flags
+      - name: Echo run flags
+        shell: bash
+        run: |
+          echo "TEST_MODE=${{ env.TEST_MODE }}"
+          echo "DRY_RUN=${{ env.DRY_RUN }}"
+
       - name: Run Update Action
         uses: ./.github/actions/update
         with:
-          # Use the global dry-run; test_mode is handled by the final job
           dry_run: "${{ env.DRY_RUN }}"
 
   modify_git_revision:
@@ -86,7 +92,7 @@ jobs:
       - name: Run Codeberg Action
         uses: ./.github/actions/codeberg
         with:
-          # codeberg_url: "https://codeberg.org/you/repo.git"  # if you need it
+          # codeberg_url: "https://codeberg.org/you/repo.git"  # set if needed
           dry_run: "${{ env.DRY_RUN }}"
 
   codeberg_release:
@@ -124,13 +130,34 @@ jobs:
           notes_path: "CHANGELOG.md"
           dry_run: "${{ env.DRY_RUN }}"
 
-  # ── GLOBAL TEST-MODE GATE (runs at the very end) ─────────────────────────────
+  reset_git_revision:
+    name: Reset Git Revision
+    runs-on: ubuntu-latest
+    needs: codeberg_notes
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Set INCLUDE_GIT_REVISION to ON
+        shell: bash
+        run: |
+          sed -i 's/set(INCLUDE_GIT_REVISION OFF)/set(INCLUDE_GIT_REVISION ON)/' cmake/Version.cmake
+
+  # Global test-mode gate — runs after all jobs and intentionally fails when enabled
   fail_if_test_mode:
     name: Fail run if global test mode is enabled
     runs-on: ubuntu-latest
     needs:
+      - update
+      - modify_git_revision
+      - build
+      - codeberg
+      - codeberg_release
       - codeberg_notes
-    if: always()  # ensure this gate evaluates even if a previous job failed
+      - reset_git_revision
+    if: always()   # evaluate regardless of earlier outcomes
     steps:
       - name: Check TEST_MODE and optionally fail
         shell: bash
@@ -142,3 +169,4 @@ jobs:
           else
             echo "Global test mode disabled: completing workflow normally."
           fi
+``
