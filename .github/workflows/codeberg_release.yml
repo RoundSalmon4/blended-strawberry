@@ -1,6 +1,7 @@
 name: Sync Releases to Codeberg
 
 on:
+  workflow_call:
   workflow_dispatch:  # Trigger manually
 
 permissions:
