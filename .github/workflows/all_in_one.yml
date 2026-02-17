@@ -36,13 +36,6 @@ jobs:
         with:
           ref: master
 
-      # (Optional) quick log of global flags
-      - name: Echo run flags
-        shell: bash
-        run: |
-          echo "TEST_MODE=${{ env.TEST_MODE }}"
-          echo "DRY_RUN=${{ env.DRY_RUN }}"
-
       - name: Run Update Action
         uses: ./.github/actions/update
         with:
@@ -169,4 +162,3 @@ jobs:
           else
             echo "Global test mode disabled: completing workflow normally."
           fi
-``
