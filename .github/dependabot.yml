@@ -4,9 +4,3 @@ updates:
     directory: "/"
     schedule:
       interval: daily
-    ignore:
-      - dependency-name: "RoundSalmon4/codeberg_notes"  # Replace with the actual Action name
-      - dependency-name: "RoundSalmon4/update" 
-      - dependency-name: "RoundSalmon4/build" 
-      - dependency-name: "RoundSalmon4/codeberg_release" 
-      - dependency-name: "RoundSalmon4/codeberg"
