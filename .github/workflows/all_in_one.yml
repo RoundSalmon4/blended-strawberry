@@ -27,20 +27,15 @@ env:
   DRY_RUN: ${{ inputs.dry_run }}
 
 jobs:
-  # ─────────────────────────────────────────────────────────────────────────────
-  # Job 1: Update from upstream (reusable workflow)
-  # ─────────────────────────────────────────────────────────────────────────────
+  # 1) Update (reusable workflow)
   update:
     name: Update from upstream
     uses: RoundSalmon4/blended-strawberry/.github/workflows/update.yml@master
     with:
-      # Passed through to the reusable workflow (must declare this input there)
       dry_run: ${{ inputs.dry_run }}
     secrets: inherit
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # Job 2: Modify INCLUDE_GIT_REVISION (inline)
-  # ─────────────────────────────────────────────────────────────────────────────
+  # 2) Modify INCLUDE_GIT_REVISION (inline)
   modify_git_revision:
     name: Modify Git Revision
     runs-on: ubuntu-latest
@@ -56,9 +51,7 @@ jobs:
         run: |
           sed -i 's/set(INCLUDE_GIT_REVISION ON)/set(INCLUDE_GIT_REVISION OFF)/' cmake/Version.cmake
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # Job 3: Build (reusable workflow)
-  # ─────────────────────────────────────────────────────────────────────────────
+  # 3) Build (reusable workflow)
   build:
     name: Build
     needs: modify_git_revision
@@ -67,9 +60,7 @@ jobs:
       dry_run: ${{ inputs.dry_run }}
     secrets: inherit
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # Job 4: Sync Codeberg Repo (reusable workflow)
-  # ─────────────────────────────────────────────────────────────────────────────
+  # 4) Sync Codeberg (reusable workflow)
   codeberg:
     name: Sync Codeberg Repo
     needs: build
@@ -78,24 +69,20 @@ jobs:
       dry_run: ${{ inputs.dry_run }}
     secrets: inherit
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # Job 5: Add Codeberg Release (reusable workflow)
-  # ─────────────────────────────────────────────────────────────────────────────
+  # 5) Codeberg Release (reusable workflow)
   codeberg_release:
     name: Add Codeberg Release
     needs: codeberg
     uses: RoundSalmon4/blended-strawberry/.github/workflows/codeberg_release.yml@master
     with:
       dry_run: ${{ inputs.dry_run }}
-      # Example: if your reusable workflow supports these inputs, pass them through
+      # If your reusable workflow supports these inputs, they're here as examples:
       tag: ${{ github.ref_name }}
       title: "Release ${{ github.ref_name }}"
       notes_path: "CHANGELOG.md"
     secrets: inherit
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # Job 6: Add Codeberg Notes (reusable workflow)
-  # ─────────────────────────────────────────────────────────────────────────────
+  # 6) Codeberg Notes (reusable workflow)
   codeberg_notes:
     name: Add Codeberg Notes
     needs: codeberg_release
@@ -106,9 +93,7 @@ jobs:
       notes_path: "CHANGELOG.md"
     secrets: inherit
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # Final: Reset INCLUDE_GIT_REVISION (inline)
-  # ─────────────────────────────────────────────────────────────────────────────
+  # 7) Reset INCLUDE_GIT_REVISION (inline)
   reset_git_revision:
     name: Reset Git Revision
     runs-on: ubuntu-latest
@@ -124,9 +109,7 @@ jobs:
         run: |
           sed -i 's/set(INCLUDE_GIT_REVISION OFF)/set(INCLUDE_GIT_REVISION ON)/' cmake/Version.cmake
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # Global test-mode gate — runs after all jobs and intentionally fails if enabled
-  # ─────────────────────────────────────────────────────────────────────────────
+  # Final: Global test-mode gate — intentionally fail at the very end if enabled
   fail_if_test_mode:
     name: Fail run if global test mode is enabled
     runs-on: ubuntu-latest
@@ -138,7 +121,7 @@ jobs:
       - codeberg_release
       - codeberg_notes
       - reset_git_revision
-    if: always()   # evaluate regardless of earlier outcomes
+    if: always()
     steps:
       - name: Check TEST_MODE and optionally fail
         shell: bash
