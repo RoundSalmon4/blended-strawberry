@@ -6,7 +6,7 @@ on:
     inputs:
       # SINGLE-TAG / OFFSET MODE (one tag per run, gentle on APIs)
       tag:
-        description: "Specific GitHub release tag to process (optional). Ignored when update_existing_only=true"
+        description: "Specific GitHub release tag to process (optional)"
         required: false
         type: string
       offset:
@@ -17,12 +17,12 @@ on:
 
       # GLOBAL BEHAVIOR
       delay_ms:
-        description: "Delay between API calls (ms)"
+        description: "Delay between API calls (ms) to reduce timeouts / rate limits"
         required: false
         type: number
         default: 750
       check_only:
-        description: "Create/update name/body only (no downloads/uploads). For update_existing_only=true this is implied."
+        description: "Create/update release name/body only (no downloads/uploads)"
         required: false
         type: boolean
         default: false
@@ -37,7 +37,7 @@ on:
         type: boolean
         default: false
 
-      # NEW: WALK WHAT ALREADY EXISTS ON CODEBERG AND PATCH IT
+      # WALK WHAT ALREADY EXISTS ON CODEBERG AND PATCH IT
       update_existing_only:
         description: "Patch name/body of existing Codeberg releases to match GitHub (skips creation and assets)"
         required: false
@@ -45,7 +45,7 @@ on:
         default: false
 
 permissions:
-  actions: write     # REQUIRED to allow createWorkflowDispatch()
+  actions: write     # REQUIRED for createWorkflowDispatch() with GITHUB_TOKEN
   contents: write
   issues: write
   pull-requests: write
@@ -108,7 +108,7 @@ jobs:
           set -euo pipefail
           METHOD="$1"; shift
           URL="$1"; shift
-          # Prints response body and HTTP code separated by marker
+          # Prints body + HTTP code marker
           curl -sS -X "${METHOD}" \
             --retry "${CURL_RETRIES:-5}" \
             --retry-delay "${CURL_RETRY_DELAY:-2}" \
@@ -135,7 +135,7 @@ jobs:
       # =========================
       - name: "[MODE] Update existing Codeberg releases only (no assets)"
         if: ${{ inputs.update_existing_only == true && vars.NO_SIDE_EFFECTS == 'true' }}
-        run: echo "[TEST] update_existing_only=true & NO_SIDE_EFFECTS=true → Scan Codeberg and show what WOULD be patched (no writes)."
+        run: echo "[TEST] update_existing_only=true & NO_SIDE_EFFECTS=true → Would scan Codeberg and PATCH name/body (no writes)."
 
       - name: Walk existing Codeberg releases and patch name/body
         if: ${{ inputs.update_existing_only == true }}
@@ -146,13 +146,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Fetch Codeberg releases (first page). If you have many, add pagination as needed.
+          # Fetch first page of Codeberg releases. Add pagination if needed.
           CB=$(./curl_json.sh "https://codeberg.org/api/v1/repos/unwanted9855/blended-strawberry/releases" \
                -H "Authorization: token ${CODEBERG_TOKEN}")
           COUNT=$(echo "${CB}" | jq 'length')
           echo "Found ${COUNT} Codeberg releases (first page)."
 
-          # Iterate
           i=0
           while true; do
             TAG=$(echo "${CB}" | jq -r ".[$i].tag_name // empty") || true
@@ -161,7 +160,7 @@ jobs:
             CURRNAME=$(echo "${CB}" | jq -r ".[$i].name // empty")
             echo "→ Codeberg tag=${TAG} (id=${CURRID}) currentName='${CURRNAME}'"
 
-            # Fetch matching GitHub release
+            # Matching GitHub release
             GH=$(./curl_json.sh "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG}" \
                  -H "Authorization: token ${GH_TOKEN}" || true)
             GMSG=$(echo "${GH}" | jq -r '.message // empty')
@@ -173,22 +172,19 @@ jobs:
               i=$((i+1)); ./ms_sleep.sh "${DELAY_MS}"; continue
             fi
 
-            # Desired values
             [ -z "${GHNAME}" ] || [ "${GHNAME}" = "null" ] && GHNAME="Blended Strawberry ${TAG}"
             [ -z "${GHBODY}" ] || [ "${GHBODY}" = "null" ] && GHBODY="Release for tag ${TAG}"
 
-            # If name/body already match (quick string compare), skip patch
             if [ "${CURRNAME}" = "${GHNAME}" ]; then
-              echo "  Name already matches. (Body not compared to avoid noisy updates.)"
+              echo "  Name already matches. (Body compare skipped intentionally.)"
               i=$((i+1)); ./ms_sleep.sh "${DELAY_MS}"; continue
             fi
 
             if [ "${{ vars.NO_SIDE_EFFECTS }}" = "true" ]; then
-              echo "  [TEST] Would PATCH name='${GHNAME}' (length(body)=$(printf '%s' "${GHBODY}" | wc -c))"
+              echo "  [TEST] Would PATCH name='${GHNAME}' (len(body)=$(printf '%s' "${GHBODY}" | wc -c))"
               i=$((i+1)); ./ms_sleep.sh "${DELAY_MS}"; continue
             fi
 
-            # PATCH name/body strictly and check HTTP code
             UDATA=$(jq -n --arg name "${GHNAME}" --arg body "${GHBODY}" '{ name: $name, body: $body }')
             RESP=$(
               ./curl_json_code.sh PATCH \
@@ -210,8 +206,6 @@ jobs:
           done
 
           echo "Done walking/patching existing Codeberg releases."
-        # END update_existing_only MODE
-      # =========================
 
       # =========================
       # MODE 2: SINGLE-TAG / OFFSET (creation + optional assets)
@@ -405,7 +399,7 @@ jobs:
             ./ms_sleep.sh "${DELAY_MS}"
           done
 
-      # ========= DISCOVER WORKFLOW ID (for reliable re-dispatch) =========
+      # ========= GET THIS WORKFLOW ID (for reliable re-dispatch) =========
       - name: Get this workflow ID
         id: wf_id
         if: ${{ inputs.update_existing_only != true && inputs.auto_continue == true && steps.resolve.outputs.single != 'true' && (fromJson(steps.resolve.outputs.next_offset) < fromJson(steps.resolve.outputs.total)) }}
@@ -420,39 +414,46 @@ jobs:
             const wfFile = '.github/workflows/codeberg_old.yml';
             let wf = data.workflows.find(w => (w.path === wfFile));
             if (!wf) wf = data.workflows.find(w => (w.name || '').trim() === 'Sync Old Releases to Codeberg');
-            if (!wf) core.setFailed(`Could not locate workflow id for ${wfFile}`);
-            else core.setOutput('id', String(wf.id));
+            if (!wf) {
+              core.setFailed(`Could not locate workflow id for ${wfFile}`);
+            } else {
+              core.setOutput('id', String(wf.id));
+            }
 
-      # ========= RE-DISPATCH (GITHUB_TOKEN) =========
+      # ========= RE-DISPATCH WITH GITHUB_TOKEN =========
       - name: Re-dispatch self (GITHUB_TOKEN)
-        if: ${{ inputs.update_existing_only != true && inputs.auto_continue == true && steps.resolve.outputs.single != 'true' && (fromJson(steps.resolve.outputs.next_offset) < fromJson(steps.resolve.outputs.total)) && (secrets.WORKFLOW_DISPATCH_TOKEN == '') }}
+        if: ${{ inputs.update_existing_only != true && inputs.auto_continue == true && steps.resolve.outputs.single != 'true' && (fromJson(steps.resolve.outputs.next_offset) < fromJson(steps.resolve.outputs.total)) }}
         uses: actions/github-script@v7
         with:
           github-token: ${{ github.token }}
           script: |
-            const workflow_id = parseInt(`${{ steps.wf_id.outputs.id }}`, 10);
-            const ref = 'master'; // change if default branch differs
-            const inputs = {
-              tag: '',
-              offset: `${{ steps.resolve.outputs.next_offset }}`,
-              delay_ms: `${{ inputs.delay_ms }}`,
-              check_only: `${{ inputs.check_only }}`,
-              light_test: `${{ inputs.light_test }}`,
-              auto_continue: 'true',
-              update_existing_only: 'false'
-            };
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id,
-              ref,
-              inputs
-            });
-            core.info(`Re-dispatched with offset=${inputs.offset} (GITHUB_TOKEN)`);
+            try {
+              const workflow_id = parseInt(`${{ steps.wf_id.outputs.id }}`, 10);
+              const ref = 'master'; // change if your default branch differs
+              const inputs = {
+                tag: '',
+                offset: `${{ steps.resolve.outputs.next_offset }}`,
+                delay_ms: `${{ inputs.delay_ms }}`,
+                check_only: `${{ inputs.check_only }}`,
+                light_test: `${{ inputs.light_test }}`,
+                auto_continue: 'true',
+                update_existing_only: 'false'
+              };
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id,
+                ref,
+                inputs
+              });
+              core.info(`Re-dispatched with offset=${inputs.offset} (GITHUB_TOKEN)`);
+            } catch (err) {
+              core.warning(`GITHUB_TOKEN dispatch failed: ${err.message}`);
+            }
 
-      # ========= RE-DISPATCH (PAT FALLBACK) =========
+      # ========= PAT FALLBACK (NO secrets.* IN IF) =========
       - name: Re-dispatch self (PAT fallback)
-        if: ${{ inputs.update_existing_only != true && inputs.auto_continue == true && steps.resolve.outputs.single != 'true' && (fromJson(steps.resolve.outputs.next_offset) < fromJson(steps.resolve.outputs.total)) && (secrets.WORKFLOW_DISPATCH_TOKEN != '') }}
+        if: ${{ inputs.update_existing_only != true && inputs.auto_continue == true && steps.resolve.outputs.single != 'true' && (fromJson(steps.resolve.outputs.next_offset) < fromJson(steps.resolve.outputs.total)) }}
         shell: bash
         env:
           WF_ID: ${{ steps.wf_id.outputs.id }}
@@ -462,18 +463,24 @@ jobs:
           CHECK_ONLY: ${{ inputs.check_only }}
           LIGHT_TEST: ${{ inputs.light_test }}
           AUTO_CONTINUE: true
+          UPDATE_EXISTING_ONLY: false
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          TOKEN: ${{ secrets.WORKFLOW_DISPATCH_TOKEN }}
+          TOKEN: ${{ secrets.WORKFLOW_DISPATCH_TOKEN }}   # PAT is passed here; no 'if: secrets...' usage
         run: |
           set -euo pipefail
+          if [ -z "${TOKEN:-}" ]; then
+            echo "No WORKFLOW_DISPATCH_TOKEN provided; skipping PAT fallback."
+            exit 0
+          fi
+
           body=$(jq -n \
             --arg offset "${NEXT_OFFSET}" \
             --arg delay_ms "${DELAY_MS}" \
             --arg check_only "${CHECK_ONLY}" \
             --arg light_test "${LIGHT_TEST}" \
             --arg auto_continue "${AUTO_CONTINUE}" \
-            --arg update_existing_only "false" \
+            --arg update_existing_only "${UPDATE_EXISTING_ONLY}" \
             '{
               ref: "master",
               inputs: {
@@ -486,6 +493,7 @@ jobs:
                 update_existing_only: $update_existing_only
               }
             }')
+
           echo "Dispatching next run with offset=${NEXT_OFFSET} (PAT fallback)"
           curl -sS -X POST \
             -H "Authorization: token ${TOKEN}" \
