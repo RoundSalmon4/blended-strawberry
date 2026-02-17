@@ -88,3 +88,11 @@ jobs:
       - name: Set INCLUDE_GIT_REVISION to ON
         run: |
           sed -i 's/set(INCLUDE_GIT_REVISION OFF)/set(INCLUDE_GIT_REVISION ON)/' cmake/Version.cmake
+
+  dummy:
+    name: Dummy Job to Prevent Completion
+    runs-on: ubuntu-latest
+    needs: [update, modify_git_revision, build, codeberg, codeberg_release, codeberg_notes, reset_git_revision]
+    steps:
+      - name: Exit
+        run: exit 1  # This will cause the job to fail
