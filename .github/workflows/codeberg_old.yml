@@ -330,7 +330,7 @@ jobs:
       # ========= AUTO-CONTINUE (re-dispatch self) =========
       - name: Re-dispatch self for next tag
         if: ${{ inputs.auto_continue == true && steps.resolve.outputs.single != 'true' && (fromJson(steps.resolve.outputs.next_offset) < fromJson(steps.resolve.outputs.total)) }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ github.token }}
           script: |

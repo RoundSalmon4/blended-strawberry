@@ -146,7 +146,7 @@ jobs:
         run: echo "[DRY RUN] Would dispatch .github/workflows/update.yml on ref ${{ env.REF }}"
       - name: Dispatch and wait (update.yml)
         if: ${{ env.DRY_RUN != 'true' }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           WORKFLOW_FILE: .github/workflows/update.yml
         with:
@@ -208,7 +208,7 @@ jobs:
         run: echo "[DRY RUN] Would dispatch .github/workflows/build.yml on ref ${{ env.REF }}"
       - name: Dispatch and wait (build.yml)
         if: ${{ env.DRY_RUN != 'true' }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           WORKFLOW_FILE: .github/workflows/build.yml
         with:
@@ -244,7 +244,7 @@ jobs:
         run: echo "[DRY RUN] Would dispatch .github/workflows/codeberg.yml on ref ${{ env.REF }}"
       - name: Dispatch and wait (codeberg.yml)
         if: ${{ env.DRY_RUN != 'true' }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           WORKFLOW_FILE: .github/workflows/codeberg.yml
         with:
@@ -280,7 +280,7 @@ jobs:
         run: echo "[DRY RUN] Would dispatch .github/workflows/codeberg_release.yml on ref ${{ env.REF }}"
       - name: Dispatch and wait (codeberg_release.yml)
         if: ${{ env.DRY_RUN != 'true' }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           WORKFLOW_FILE: .github/workflows/codeberg_release.yml
         with:
@@ -316,7 +316,7 @@ jobs:
         run: echo "[DRY RUN] Would dispatch .github/workflows/codeberg_notes.yml on ref ${{ env.REF }}"
       - name: Dispatch and wait (codeberg_notes.yml)
         if: ${{ env.DRY_RUN != 'true' }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           WORKFLOW_FILE: .github/workflows/codeberg_notes.yml
         with:
