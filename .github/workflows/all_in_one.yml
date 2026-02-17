@@ -11,94 +11,101 @@ permissions:
   deployments: write
 
 jobs:
-  update:  # Job 1: Update from upstream
+  update:  # Job 1: Update from upstream (local composite action)
     name: Update from upstream
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2  
+        uses: actions/checkout@v4
         with:
           ref: master
-        
-      - name: Run Update Action
-        uses: RoundSalmon4/update@master
 
-  modify_git_revision:  # Job 2: Modify INCLUDE_GIT_REVISION
+      - name: Run Update Action
+        # Local composite action at .github/actions/update/action.yml
+        uses: ./.github/actions/update
+
+  modify_git_revision:  # Job 2: Modify INCLUDE_GIT_REVISION (inline script)
     name: Modify Git Revision
     runs-on: ubuntu-latest
-    needs: update  # This job will run after the update job
+    needs: update
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2  
+        uses: actions/checkout@v4
         with:
           ref: master
-        
+
       - name: Set INCLUDE_GIT_REVISION to OFF
+        shell: bash
         run: |
           sed -i 's/set(INCLUDE_GIT_REVISION ON)/set(INCLUDE_GIT_REVISION OFF)/' cmake/Version.cmake
 
-  build:
+  build:  # Job 3: Build (local composite action)
     name: Build
     runs-on: ubuntu-latest
-    needs: modify_git_revision  # This job will run after modifying git revision
+    needs: modify_git_revision
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2  
+        uses: actions/checkout@v4
         with:
           ref: master
 
       - name: Run Build Action
-        uses: RoundSalmon4/build@master
+        # Local composite action at .github/actions/build/action.yml
+        uses: ./.github/actions/build
 
-  codeberg:
+  codeberg:  # Job 4: Sync Codeberg (local composite action)
     name: Sync Codeberg Repo
     runs-on: ubuntu-latest
     needs: build
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2  
+        uses: actions/checkout@v4
         with:
           ref: master
-        
-      - name: Run Codeberg Action
-        uses: RoundSalmon4/codeberg@master
 
-  codeberg_release:
+      - name: Run Codeberg Action
+        # Local composite action at .github/actions/codeberg/action.yml
+        uses: ./.github/actions/codeberg
+
+  codeberg_release:  # Job 5: Release on Codeberg (local composite action)
     name: Add Codeberg Release
     runs-on: ubuntu-latest
     needs: codeberg
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2  
+        uses: actions/checkout@v4
         with:
           ref: master
-        
-      - name: Run Codeberg Release Action
-        uses: RoundSalmon4/codeberg_release@master
 
-  codeberg_notes:
+      - name: Run Codeberg Release Action
+        # Local composite action at .github/actions/codeberg_release/action.yml
+        uses: ./.github/actions/codeberg_release
+
+  codeberg_notes:  # Job 6: Notes on Codeberg (local composite action)
     name: Add Codeberg Notes
     runs-on: ubuntu-latest
     needs: codeberg_release
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2  
+        uses: actions/checkout@v4
         with:
           ref: master
-        
-      - name: Run Codeberg Notes Action
-        uses: RoundSalmon4/codeberg_notes@master
 
-  reset_git_revision:  # Final job to reset INCLUDE_GIT_REVISION
+      - name: Run Codeberg Notes Action
+        # Local composite action at .github/actions/codeberg_notes/action.yml
+        uses: ./.github/actions/codeberg_notes
+
+  reset_git_revision:  # Final job to reset INCLUDE_GIT_REVISION (inline script)
     name: Reset Git Revision
     runs-on: ubuntu-latest
     needs: codeberg_notes
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2  
+        uses: actions/checkout@v4
         with:
           ref: master
 
       - name: Set INCLUDE_GIT_REVISION to ON
+        shell: bash
         run: |
           sed -i 's/set(INCLUDE_GIT_REVISION OFF)/set(INCLUDE_GIT_REVISION ON)/' cmake/Version.cmake
