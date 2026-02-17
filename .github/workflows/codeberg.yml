@@ -1,6 +1,7 @@
 name: Sync to Codeberg
 
 on:
+  workflow_call:
   push:
     branches:
       - master
