@@ -8,8 +8,8 @@ on:
         description: "Specific GitHub release tag to process (optional)"
         required: false
         type: string
-      # Offset is used when processing a list (no tag provided).
-      # We process ONE tag per run starting at 'offset + 1' in the release list.
+      # Offset is used when scanning the list (no tag provided).
+      # We process ONE tag per run starting at 'offset + 1' in the non-prerelease list.
       offset:
         description: "Line offset in the non-prerelease tag list (0-based) when scanning"
         required: false
@@ -37,6 +37,7 @@ on:
         default: false
 
 permissions:
+  actions: write     # <-- REQUIRED to allow workflow_dispatch from within this workflow
   contents: write
   issues: write
   pull-requests: write
@@ -53,7 +54,7 @@ jobs:
       CURL_RETRY_DELAY: "2"   # seconds
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -122,7 +123,7 @@ jobs:
             exit 0
           fi
 
-          # Build a list of non-prerelease tags (GitHub returns newest first)
+          # Build a list of non-prerelease tags (newest first)
           ./curl_json.sh "https://api.github.com/repos/${{ github.repository }}/releases" \
             -H "Authorization: token ${GH_TOKEN}" > all_releases.json
 
@@ -173,7 +174,7 @@ jobs:
             BODY="Release for tag ${TAG}"
           fi
 
-          # Persist to outputs (sanitize newlines for Actions output)
+          # Persist to outputs (sanitize newlines)
           SAFE_BODY=$(printf "%s" "${BODY}" | sed ':a;N;$!ba;s/\r//g' )
           echo "name=${NAME}" >> "$GITHUB_OUTPUT"
           printf "body<<EOF\n%s\nEOF\n" "${SAFE_BODY}" >> "$GITHUB_OUTPUT"
@@ -184,7 +185,7 @@ jobs:
         run: |
           echo "[TEST] Would ensure Codeberg release exists for tag '${{ steps.resolve.outputs.tag }}'"
           echo "[TEST] Would set name='${{ steps.gh_meta.outputs.name }}'"
-          echo "[TEST] Would set body to GitHub release notes (length ~= $(echo "${{ steps.gh_meta.outputs.body }}" | wc -c))"
+          echo "[TEST] Would set body length ~= $(echo "${{ steps.gh_meta.outputs.body }}" | wc -c)"
           if [ "${{ inputs.check_only }}" = "true" ]; then
             echo "[TEST] check_only=true → would not download or upload assets."
           else
@@ -244,7 +245,6 @@ jobs:
               --retry "${CURL_RETRIES}" --retry-delay "${CURL_RETRY_DELAY}" --retry-all-errors --max-time "${CURL_MAX_TIME}" \
               -d "${UDATA}" \
               "https://codeberg.org/api/v1/repos/unwanted9855/blended-strawberry/releases/${RID}")
-            # No strong validation here; log response:
             echo "Patch response: ${UPD}"
           fi
 
@@ -298,7 +298,6 @@ jobs:
           set -euo pipefail
           TAG="${{ steps.resolve.outputs.tag }}"
 
-          # Need current release id again (in case we created it above)
           CHECK=$(./curl_json.sh "https://codeberg.org/api/v1/repos/unwanted9855/blended-strawberry/releases/tags/${TAG}" \
                   -H "Authorization: token ${CODEBERG_TOKEN}" || true)
           RID=$(echo "${CHECK}" | jq -r '.id // empty')
@@ -330,25 +329,32 @@ jobs:
       # ========= AUTO-CONTINUE (re-dispatch self) =========
       - name: Re-dispatch self for next tag
         if: ${{ inputs.auto_continue == true && steps.resolve.outputs.single != 'true' && (fromJson(steps.resolve.outputs.next_offset) < fromJson(steps.resolve.outputs.total)) }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v7
         with:
+          # If your org blocks GITHUB_TOKEN for dispatch, create a classic PAT with 'repo' scope
+          # and store it as secret WORKFLOW_DISPATCH_TOKEN, then replace the line below with:
+          # github-token: ${{ secrets.WORKFLOW_DISPATCH_TOKEN }}
           github-token: ${{ github.token }}
           script: |
-            const ref = 'master'; // change if your default branch differs
-            const inputs = {
-              tag: '',
-              offset: `${{ steps.resolve.outputs.next_offset }}`,
-              delay_ms: `${{ inputs.delay_ms }}`,
-              check_only: `${{ inputs.check_only }}`,
-              light_test: `${{ inputs.light_test }}`,
-              auto_continue: 'true'
-            };
-            // Re-dispatch this same file
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: '.github/workflows/codeberg_old.yml',
-              ref,
-              inputs
-            });
-            core.info(`Re-dispatched codeberg_old.yml with offset=${inputs.offset}`);
+            try {
+              const ref = 'master'; // change if your default branch differs
+              const inputs = {
+                tag: '',
+                offset: `${{ steps.resolve.outputs.next_offset }}`,
+                delay_ms: `${{ inputs.delay_ms }}`,
+                check_only: `${{ inputs.check_only }}`,
+                light_test: `${{ inputs.light_test }}`,
+                auto_continue: 'true'
+              };
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: '.github/workflows/codeberg_old.yml', // filename works too: 'codeberg_old.yml'
+                ref,
+                inputs
+              });
+              core.info(`Re-dispatched codeberg_old.yml with offset=${inputs.offset}`);
+            } catch (err) {
+              core.warning(`Auto-continue dispatch failed: ${err.message}`);
+              core.warning('Ensure: (1) this workflow has permissions.actions = write, (2) repo Settings → Actions → Workflow permissions = Read and write, (3) use a PAT secret via github-token if org policy blocks GITHUB_TOKEN.');
+            }
