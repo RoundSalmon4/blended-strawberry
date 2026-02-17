@@ -1,8 +1,6 @@
 version: 2
 updates:
-  - package-ecosystem: "git"
+  - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: daily
-    allow:
-      - dependency-type: "direct" # Update only direct dependencies
