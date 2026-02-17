@@ -58,6 +58,7 @@ jobs:
     uses: RoundSalmon4/blended-strawberry/.github/workflows/build.yml@master
     with:
       dry_run: ${{ inputs.dry_run }}
+      build_type: "Release"
     secrets: inherit
 
   # 4) Sync Codeberg (reusable workflow)
@@ -67,6 +68,7 @@ jobs:
     uses: RoundSalmon4/blended-strawberry/.github/workflows/codeberg.yml@master
     with:
       dry_run: ${{ inputs.dry_run }}
+      # codeberg_url: "https://codeberg.org/you/repo.git"  # uncomment / set if needed
     secrets: inherit
 
   # 5) Codeberg Release (reusable workflow)
@@ -76,7 +78,6 @@ jobs:
     uses: RoundSalmon4/blended-strawberry/.github/workflows/codeberg_release.yml@master
     with:
       dry_run: ${{ inputs.dry_run }}
-      # If your reusable workflow supports these inputs, they're here as examples:
       tag: ${{ github.ref_name }}
       title: "Release ${{ github.ref_name }}"
       notes_path: "CHANGELOG.md"
