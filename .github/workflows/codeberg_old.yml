@@ -2,10 +2,42 @@ name: Sync Old Releases to Codeberg
 
 on:
   workflow_call:
-  workflow_dispatch:  # Trigger manually
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Specific GitHub release tag to process (optional)"
+        required: false
+        type: string
+      # Offset is used when processing a list (no tag provided).
+      # We process ONE tag per run starting at 'offset + 1' in the release list.
+      offset:
+        description: "Line offset in the non-prerelease tag list (0-based) when scanning"
+        required: false
+        type: number
+        default: 0
+      delay_ms:
+        description: "Delay between API calls (ms) to avoid timeouts / rate limits"
+        required: false
+        type: number
+        default: 750
+      check_only:
+        description: "Create/update the Codeberg release name/body only (no downloads/uploads)"
+        required: false
+        type: boolean
+        default: false
+      light_test:
+        description: "If NO_SIDE_EFFECTS=true, also skip downloads for quick verification"
+        required: false
+        type: boolean
+        default: false
+      auto_continue:
+        description: "Re-dispatch self to process the next tag automatically"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
-  contents: write  # Allow action to write to repository
+  contents: write
   issues: write
   pull-requests: write
   deployments: write
@@ -13,202 +45,310 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DELAY_MS: ${{ inputs.delay_ms }}
+      CURL_MAX_TIME: "120"    # seconds per request
+      CURL_RETRIES: "5"
+      CURL_RETRY_DELAY: "2"   # seconds
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Clean Previous Downloads
+      - name: Show run configuration
         shell: bash
         run: |
-          echo "Cleaning up previous downloads..."
-          rm -f *.dmg *.exe
+          echo "NO_SIDE_EFFECTS=${{ vars.NO_SIDE_EFFECTS }}"
+          echo "INPUT tag='${{ inputs.tag }}'"
+          echo "INPUT offset='${{ inputs.offset }}'"
+          echo "INPUT delay_ms='${{ inputs.delay_ms }}'"
+          echo "INPUT check_only='${{ inputs.check_only }}'"
+          echo "INPUT light_test='${{ inputs.light_test }}'"
+          echo "INPUT auto_continue='${{ inputs.auto_continue }}'"
 
-      - name: Get Releases List
-        id: get_releases
+      - name: Clean previous downloads
+        if: ${{ vars.NO_SIDE_EFFECTS != 'true' || !inputs.light_test }}
+        shell: bash
+        run: |
+          rm -f *.dmg *.exe assets.txt releases.txt all_releases.json || true
+
+      - name: Define helpers
+        id: helpers
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > curl_json.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          URL="$1"; shift || true
+          curl -sS \
+            --retry "${CURL_RETRIES:-5}" \
+            --retry-delay "${CURL_RETRY_DELAY:-2}" \
+            --retry-all-errors \
+            --max-time "${CURL_MAX_TIME:-120}" \
+            "$@" "$URL"
+          EOF
+          chmod +x curl_json.sh
+
+          cat > ms_sleep.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          MS="${1:-0}"
+          python3 - <<PY
+          import time, sys
+          ms = int(sys.argv[1]) if len(sys.argv)>1 else 0
+          time.sleep(ms/1000)
+          PY
+          EOF
+          chmod +x ms_sleep.sh
+
+      - name: Resolve tag to process
+        id: resolve
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          all_releases=$(curl -s -H "Authorization: token ${GH_TOKEN}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases")
-          echo "${all_releases}" | jq -r '.[] | select(.prerelease == false) | .tag_name' > releases.txt
 
-      - name: Find first unuploaded release tag
-        shell: bash
-        env:
-          CODEBERG_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
-        run: |
-          set -euo pipefail
-          found_unuploaded_release=0
+          if [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+            echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+            echo "total=1" >> "$GITHUB_OUTPUT"
+            echo "next_offset=0" >> "$GITHUB_OUTPUT"
+            echo "single=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-          # Fetch existing Codeberg releases once (paginate naïvely—adjust if you have many)
-          cb_releases=$(curl -s -H "Authorization: token ${CODEBERG_TOKEN}" \
-            "https://codeberg.org/api/v1/repos/unwanted9855/blended-strawberry/releases")
+          # Build a list of non-prerelease tags (GitHub returns newest first)
+          ./curl_json.sh "https://api.github.com/repos/${{ github.repository }}/releases" \
+            -H "Authorization: token ${GH_TOKEN}" > all_releases.json
 
-          while IFS= read -r tag_name; do
-            [ -z "${tag_name}" ] && continue
-            if echo "${cb_releases}" | jq -e --arg t "${tag_name}" '.[] | select(.tag_name == $t)' >/dev/null 2>&1; then
-              echo "Release for tag ${tag_name} already exists on Codeberg. Skipping..."
-            else
-              echo "Found unuploaded release tag: ${tag_name}"
-              echo "tag_name=${tag_name}" >> "$GITHUB_ENV"
-              found_unuploaded_release=1
-              break
-            fi
-          done < releases.txt
+          jq -r '.[] | select(.prerelease == false) | .tag_name' all_releases.json > releases.txt || true
+          TOTAL=$(wc -l < releases.txt | tr -d ' ')
+          echo "total=${TOTAL}" >> "$GITHUB_OUTPUT"
 
-          if [ $found_unuploaded_release -eq 0 ]; then
-            echo "No unuploaded release found."
-            # Exit 1 indicates nothing to do; switch to 0 if you prefer green runs on 'no work'
+          if [ "${TOTAL}" = "0" ]; then
+            echo "No non-prerelease GitHub releases found."
             exit 1
           fi
 
-      - name: Download Assets
+          OFFSET=${{ inputs.offset }}
+          LINE=$((OFFSET + 1))
+          TAG=$(sed -n "${LINE}p" releases.txt || true)
+
+          if [ -z "${TAG}" ]; then
+            echo "Offset ${OFFSET} is beyond the end of list."
+            exit 1
+          fi
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "single=false" >> "$GITHUB_OUTPUT"
+
+          NEXT=$((OFFSET + 1))
+          echo "next_offset=${NEXT}" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch GitHub release metadata (name/body)
+        id: gh_meta
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          TAG="${{ steps.resolve.outputs.tag }}"
+          echo "Fetching GitHub release for tag '${TAG}'"
+          REL=$(./curl_json.sh "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG}" \
+                -H "Authorization: token ${GH_TOKEN}")
 
-          if [ -z "${{ env.tag_name }}" ]; then
-            echo "No tag found for downloading assets."
-            exit 1
+          NAME=$(echo "${REL}" | jq -r '.name // empty')
+          BODY=$(echo "${REL}" | jq -r '.body // empty')
+
+          # Fallbacks if missing
+          if [ -z "${NAME}" ] || [ "${NAME}" = "null" ]; then
+            NAME="Blended Strawberry ${TAG}"
+          fi
+          if [ -z "${BODY}" ] || [ "${BODY}" = "null" ]; then
+            BODY="Release for tag ${TAG}"
           fi
 
-          rel=$(curl -s -H "Authorization: token ${GH_TOKEN}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ env.tag_name }}")
+          # Persist to outputs (sanitize newlines for Actions output)
+          SAFE_BODY=$(printf "%s" "${BODY}" | sed ':a;N;$!ba;s/\r//g' )
+          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+          printf "body<<EOF\n%s\nEOF\n" "${SAFE_BODY}" >> "$GITHUB_OUTPUT"
 
-          if [ -z "${rel}" ] || [ "${rel}" = "null" ]; then
-            echo "No release payload found for tag ${{ env.tag_name }}."
-            exit 1
-          fi
-
-          echo "${rel}" | jq -r '.assets[] | "\(.name) \(.browser_download_url)"' > assets.txt || true
-
-          if [ ! -s assets.txt ]; then
-            echo "No assets listed for tag ${{ env.tag_name }}."
-            exit 1
-          fi
-
-          while IFS= read -r line; do
-            asset_name=$(echo "$line" | awk '{print $1}')
-            asset_url=$(echo "$line" | awk '{print $2}')
-            if [ -z "${asset_name}" ] || [ -z "${asset_url}" ]; then
-              echo "Skipping malformed asset line: $line"
-              continue
-            fi
-            echo "Downloading asset: ${asset_name} from: ${asset_url}"
-            if curl -fSL -o "${asset_name}" "${asset_url}"; then
-              echo "${asset_name} downloaded successfully."
-            else
-              echo "Failed to download ${asset_name}. Exiting."
-              exit 1
-            fi
-          done < assets.txt
-
-      - name: Verify Downloads
-        shell: bash
-        run: |
-          echo "Downloaded Files:"
-          ls -al *.exe *.dmg || echo "No .exe/.dmg files matched."
-
-      # ───────────────────────────────────────────────────────────────
-      # Option A: Guard the Codeberg side effects (create/upload release)
-      # ───────────────────────────────────────────────────────────────
-
-      - name: "[TEST] Skipping Codeberg release create/upload (NO_SIDE_EFFECTS=true)"
+      # ========= TEST GATE: NO_SIDE_EFFECTS =========
+      - name: "[TEST] Skipping Codeberg create/update & uploads (NO_SIDE_EFFECTS=true)"
         if: ${{ vars.NO_SIDE_EFFECTS == 'true' }}
-        run: echo "[TEST] NO_SIDE_EFFECTS=true → Codeberg release creation and asset uploads are skipped"
+        run: |
+          echo "[TEST] Would ensure Codeberg release exists for tag '${{ steps.resolve.outputs.tag }}'"
+          echo "[TEST] Would set name='${{ steps.gh_meta.outputs.name }}'"
+          echo "[TEST] Would set body to GitHub release notes (length ~= $(echo "${{ steps.gh_meta.outputs.body }}" | wc -c))"
+          if [ "${{ inputs.check_only }}" = "true" ]; then
+            echo "[TEST] check_only=true → would not download or upload assets."
+          else
+            if [ "${{ inputs.light_test }}" = "true" ]; then
+              echo "[TEST] light_test=true → would skip downloads (even if not check_only)."
+            else
+              echo "[TEST] Would download assets and upload to Codeberg."
+            fi
+          fi
 
-      - name: Upload Assets to Codeberg
+      # ========= CREATE / UPDATE (name/body only) =========
+      - name: Ensure Codeberg release (create/update name/body)
         if: ${{ vars.NO_SIDE_EFFECTS != 'true' }}
         shell: bash
         env:
           CODEBERG_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
         run: |
           set -euo pipefail
+          TAG="${{ steps.resolve.outputs.tag }}"
+          NAME="${{ steps.gh_meta.outputs.name }}"
+          BODY="${{ steps.gh_meta.outputs.body }}"
 
-          if [ -z "${{ env.tag_name }}" ]; then
-            echo "No tag found in env.tag_name; cannot continue."
-            exit 1
-          fi
+          echo "Checking Codeberg release for tag '${TAG}'..."
+          CHECK=$(./curl_json.sh "https://codeberg.org/api/v1/repos/unwanted9855/blended-strawberry/releases/tags/${TAG}" \
+                  -H "Authorization: token ${CODEBERG_TOKEN}" || true)
 
-          if [ -z "${CODEBERG_TOKEN:-}" ]; then
-            echo "ERROR: CODEBERG_TOKEN is not set; cannot create/upload release on Codeberg."
-            exit 1
-          fi
+          MSG=$(echo "${CHECK}" | jq -r '.message // empty')
 
-          echo "Checking for release with tag ${{ env.tag_name }}."
-          release_check=$(curl -s -H "Authorization: token ${CODEBERG_TOKEN}" \
-            "https://codeberg.org/api/v1/repos/unwanted9855/blended-strawberry/releases/tags/${{ env.tag_name }}")
-
-          echo "Release check response: ${release_check}"
-
-          release_id=""
-          not_found=$(echo "${release_check}" | jq -r '.message // empty')
-
-          if [ "${not_found}" = "The target couldn't be found." ] || [ "${not_found}" = "Not Found" ] || [ -z "${release_check}" ] || [ "${release_check}" = "null" ]; then
-            echo "Creating new release for tag ${{ env.tag_name }}."
-            release_data=$(jq -n --arg tag "${{ env.tag_name }}" \
-              '{ tag_name: $tag, name: ("Release " + $tag), body: ("Release for tag " + $tag) }')
-
-            release_response=$(curl -s -X POST \
+          if [ "${MSG}" = "The target couldn't be found." ] || [ "${MSG}" = "Not Found" ] || [ -z "${CHECK}" ] || [ "${CHECK}" = "null" ]; then
+            echo "Creating Codeberg release..."
+            DATA=$(jq -n --arg tag "${TAG}" --arg name "${NAME}" --arg body "${BODY}" \
+                    '{ tag_name: $tag, name: $name, body: $body }')
+            CREATE=$(curl -sS -X POST \
               -H "Authorization: token ${CODEBERG_TOKEN}" \
               -H "Content-Type: application/json" \
-              -d "${release_data}" \
+              --retry "${CURL_RETRIES}" --retry-delay "${CURL_RETRY_DELAY}" --retry-all-errors --max-time "${CURL_MAX_TIME}" \
+              -d "${DATA}" \
               "https://codeberg.org/api/v1/repos/unwanted9855/blended-strawberry/releases")
-
-            echo "Release creation response: ${release_response}"
-            release_id=$(echo "${release_response}" | jq -r '.id // empty')
-
-            if [ -z "${release_id}" ] || [ "${release_id}" = "null" ]; then
-              echo "Failed to create release. Response: ${release_response}"
+            RID=$(echo "${CREATE}" | jq -r '.id // empty')
+            if [ -z "${RID}" ] || [ "${RID}" = "null" ]; then
+              echo "Create failed: ${CREATE}"
               exit 1
             fi
+            echo "Codeberg release created (id=${RID})."
           else
-            # If the release exists, extract its ID.
-            release_id=$(echo "${release_check}" | jq -r '.id // empty')
-            if [ -z "${release_id}" ] || [ "${release_id}" = "null" ]; then
-              echo "Error: Release ID is null. Response: ${release_check}"
+            RID=$(echo "${CHECK}" | jq -r '.id // empty')
+            if [ -z "${RID}" ] || [ "${RID}" = "null" ]; then
+              echo "Release lookup returned no id: ${CHECK}"
               exit 1
             fi
-            echo "Release for tag ${{ env.tag_name }} found."
+            # Update name/body to match GitHub
+            echo "Updating Codeberg release (id=${RID}) name/body to match GitHub..."
+            UDATA=$(jq -n --arg name "${NAME}" --arg body "${BODY}" '{ name: $name, body: $body }')
+            UPD=$(curl -sS -X PATCH \
+              -H "Authorization: token ${CODEBERG_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --retry "${CURL_RETRIES}" --retry-delay "${CURL_RETRY_DELAY}" --retry-all-errors --max-time "${CURL_MAX_TIME}" \
+              -d "${UDATA}" \
+              "https://codeberg.org/api/v1/repos/unwanted9855/blended-strawberry/releases/${RID}")
+            # No strong validation here; log response:
+            echo "Patch response: ${UPD}"
           fi
 
-          echo "Using release ID: ${release_id}"
+      # ========= CHECK-ONLY: Skip downloads/uploads =========
+      - name: "[CHECK ONLY] Skipping asset download/upload"
+        if: ${{ vars.NO_SIDE_EFFECTS != 'true' && inputs.check_only == true }}
+        run: echo "[CHECK ONLY] Releases ensured/updated; skipping downloads & uploads per 'check_only=true'."
+
+      # ========= DOWNLOAD ASSETS (when allowed) =========
+      - name: Download assets for tag
+        if: ${{ vars.NO_SIDE_EFFECTS != 'true' && inputs.check_only != true && !inputs.light_test }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.resolve.outputs.tag }}"
+          echo "Gathering assets for GitHub tag '${TAG}'..."
+          REL=$(./curl_json.sh "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG}" \
+                -H "Authorization: token ${GH_TOKEN}")
+
+          echo "${REL}" | jq -r '.assets[] | "\(.name) \(.browser_download_url)"' > assets.txt || true
+          if [ ! -s assets.txt ]; then
+            echo "No assets listed for ${TAG}."
+            exit 1
+          fi
+
+          while IFS= read -r line; do
+            NAME=$(echo "$line" | awk '{print $1}')
+            URL=$(echo "$line" | awk '{print $2}')
+            [ -z "${NAME}" ] || [ -z "${URL}" ] && continue
+            echo "Downloading ${NAME} ..."
+            curl -fSL --retry "${CURL_RETRIES}" --retry-delay "${CURL_RETRY_DELAY}" --retry-all-errors --max-time "${CURL_MAX_TIME}" -o "${NAME}" "${URL}"
+            ./ms_sleep.sh "${DELAY_MS}"
+          done < assets.txt
+
+      - name: Verify downloads
+        if: ${{ vars.NO_SIDE_EFFECTS != 'true' && inputs.check_only != true && !inputs.light_test }}
+        shell: bash
+        run: |
+          echo "Downloaded files:"
+          ls -al *.exe *.dmg || echo "No .exe/.dmg matched (check assets)."
+
+      # ========= UPLOAD ASSETS =========
+      - name: Upload assets to Codeberg
+        if: ${{ vars.NO_SIDE_EFFECTS != 'true' && inputs.check_only != true && !inputs.light_test }}
+        shell: bash
+        env:
+          CODEBERG_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.resolve.outputs.tag }}"
+
+          # Need current release id again (in case we created it above)
+          CHECK=$(./curl_json.sh "https://codeberg.org/api/v1/repos/unwanted9855/blended-strawberry/releases/tags/${TAG}" \
+                  -H "Authorization: token ${CODEBERG_TOKEN}" || true)
+          RID=$(echo "${CHECK}" | jq -r '.id // empty')
+          if [ -z "${RID}" ] || [ "${RID}" = "null" ]; then
+            echo "Cannot determine Codeberg release id for tag ${TAG}."
+            exit 1
+          fi
 
           shopt -s nullglob
-          for asset_name in *.dmg *.exe; do
-            if [ -f "${asset_name}" ]; then
-              upload_url="https://codeberg.org/api/v1/repos/unwanted9855/blended-strawberry/releases/${release_id}/assets?name=${asset_name}"
-              echo "Uploading asset ${asset_name} to release for tag ${{ env.tag_name }}."
-
-              response=$(curl -s -X POST \
-                -H "Authorization: token ${CODEBERG_TOKEN}" \
-                -H "Content-Type: application/octet-stream" \
-                --data-binary @"${asset_name}" \
-                "${upload_url}" \
-                -w "HTTPSTATUS:%{http_code}")
-
-              http_code=$(echo "${response}" | sed -e 's/.*HTTPSTATUS://')
-              response_body=$(echo "${response}" | sed -e 's/HTTPSTATUS.*//')
-
-              echo "Upload response for ${asset_name}: ${response_body}"
-
-              if [ "${http_code}" -ne 201 ]; then
-                echo "Failed to upload ${asset_name}. HTTP Status: ${http_code}. Response: ${response_body}"
-                if [ "${http_code}" -eq 404 ]; then
-                  echo "Check if the target release ID ${release_id} is valid or if the asset name is correct."
-                fi
-                exit 1
-              fi
-
-              echo "Uploaded ${asset_name} successfully."
-              sleep 2
-            else
-              echo "Asset ${asset_name} does not exist, skipping."
+          for NAME in *.dmg *.exe; do
+            echo "Uploading ${NAME} ..."
+            RESP=$(curl -sS -X POST \
+              -H "Authorization: token ${CODEBERG_TOKEN}" \
+              -H "Content-Type: application/octet-stream" \
+              --retry "${CURL_RETRIES}" --retry-delay "${CURL_RETRY_DELAY}" --retry-all-errors --max-time "${CURL_MAX_TIME}" \
+              --data-binary @"${NAME}" \
+              "https://codeberg.org/api/v1/repos/unwanted9855/blended-strawberry/releases/${RID}/assets?name=${NAME}" \
+              -w "HTTPSTATUS:%{http_code}")
+            CODE=$(echo "${RESP}" | sed -e 's/.*HTTPSTATUS://')
+            BODY=$(echo "${RESP}" | sed -e 's/HTTPSTATUS.*//')
+            echo "Upload response: ${BODY}"
+            if [ "${CODE}" -ne 201 ]; then
+              echo "Upload failed (HTTP ${CODE})."
+              exit 1
             fi
+            ./ms_sleep.sh "${DELAY_MS}"
           done
+
+      # ========= AUTO-CONTINUE (re-dispatch self) =========
+      - name: Re-dispatch self for next tag
+        if: ${{ inputs.auto_continue == true && steps.resolve.outputs.single != 'true' && (fromJson(steps.resolve.outputs.next_offset) < fromJson(steps.resolve.outputs.total)) }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const ref = 'master'; // change if your default branch differs
+            const inputs = {
+              tag: '',
+              offset: `${{ steps.resolve.outputs.next_offset }}`,
+              delay_ms: `${{ inputs.delay_ms }}`,
+              check_only: `${{ inputs.check_only }}`,
+              light_test: `${{ inputs.light_test }}`,
+              auto_continue: 'true'
+            };
+            // Re-dispatch this same file
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: '.github/workflows/codeberg_old.yml',
+              ref,
+              inputs
+            });
+            core.info(`Re-dispatched codeberg_old.yml with offset=${inputs.offset}`);
