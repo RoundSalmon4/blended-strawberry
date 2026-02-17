@@ -55,7 +55,7 @@ jobs:
           rm -f uninstall.sh
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           submodules: recursive
@@ -149,7 +149,7 @@ jobs:
         run: echo "cmake_buildtype=$(echo ${{ matrix.buildtype }} | sed 's/.*/\u&/')" >> $GITHUB_ENV
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           submodules: recursive
@@ -465,7 +465,7 @@ jobs:
           vsversion: 2022
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           submodules: recursive
@@ -673,7 +673,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y git jq gh
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
