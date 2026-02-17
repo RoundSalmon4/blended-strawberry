@@ -9,7 +9,7 @@ on:
         required: false
         default: false
       dry_run:
-        description: "Global dry-run (skip side effects in composite actions)"
+        description: "Global dry-run (skip side effects in reusable workflows)"
         type: boolean
         required: false
         default: true
@@ -27,20 +27,20 @@ env:
   DRY_RUN: ${{ inputs.dry_run }}
 
 jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 1: Update from upstream (reusable workflow)
+  # ─────────────────────────────────────────────────────────────────────────────
   update:
     name: Update from upstream
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          ref: master
+    uses: RoundSalmon4/blended-strawberry/.github/workflows/update.yml@master
+    with:
+      # Passed through to the reusable workflow (must declare this input there)
+      dry_run: ${{ inputs.dry_run }}
+    secrets: inherit
 
-      - name: Run Update Action
-        uses: ./.github/actions/update
-        with:
-          dry_run: "${{ env.DRY_RUN }}"
-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 2: Modify INCLUDE_GIT_REVISION (inline)
+  # ─────────────────────────────────────────────────────────────────────────────
   modify_git_revision:
     name: Modify Git Revision
     runs-on: ubuntu-latest
@@ -56,73 +56,59 @@ jobs:
         run: |
           sed -i 's/set(INCLUDE_GIT_REVISION ON)/set(INCLUDE_GIT_REVISION OFF)/' cmake/Version.cmake
 
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 3: Build (reusable workflow)
+  # ─────────────────────────────────────────────────────────────────────────────
   build:
     name: Build
-    runs-on: ubuntu-latest
     needs: modify_git_revision
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          ref: master
+    uses: RoundSalmon4/blended-strawberry/.github/workflows/build.yml@master
+    with:
+      dry_run: ${{ inputs.dry_run }}
+    secrets: inherit
 
-      - name: Run Build Action
-        uses: ./.github/actions/build
-        with:
-          build_type: "Release"
-          dry_run: "${{ env.DRY_RUN }}"
-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 4: Sync Codeberg Repo (reusable workflow)
+  # ─────────────────────────────────────────────────────────────────────────────
   codeberg:
     name: Sync Codeberg Repo
-    runs-on: ubuntu-latest
     needs: build
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          ref: master
+    uses: RoundSalmon4/blended-strawberry/.github/workflows/codeberg.yml@master
+    with:
+      dry_run: ${{ inputs.dry_run }}
+    secrets: inherit
 
-      - name: Run Codeberg Action
-        uses: ./.github/actions/codeberg
-        with:
-          # codeberg_url: "https://codeberg.org/you/repo.git"  # set if needed
-          dry_run: "${{ env.DRY_RUN }}"
-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 5: Add Codeberg Release (reusable workflow)
+  # ─────────────────────────────────────────────────────────────────────────────
   codeberg_release:
     name: Add Codeberg Release
-    runs-on: ubuntu-latest
     needs: codeberg
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          ref: master
+    uses: RoundSalmon4/blended-strawberry/.github/workflows/codeberg_release.yml@master
+    with:
+      dry_run: ${{ inputs.dry_run }}
+      # Example: if your reusable workflow supports these inputs, pass them through
+      tag: ${{ github.ref_name }}
+      title: "Release ${{ github.ref_name }}"
+      notes_path: "CHANGELOG.md"
+    secrets: inherit
 
-      - name: Run Codeberg Release Action
-        uses: ./.github/actions/codeberg_release
-        with:
-          tag: "${{ github.ref_name }}"
-          title: "Release ${{ github.ref_name }}"
-          notes_path: "CHANGELOG.md"
-          dry_run: "${{ env.DRY_RUN }}"
-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 6: Add Codeberg Notes (reusable workflow)
+  # ─────────────────────────────────────────────────────────────────────────────
   codeberg_notes:
     name: Add Codeberg Notes
-    runs-on: ubuntu-latest
     needs: codeberg_release
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          ref: master
+    uses: RoundSalmon4/blended-strawberry/.github/workflows/codeberg_notes.yml@master
+    with:
+      dry_run: ${{ inputs.dry_run }}
+      release_tag: ${{ github.ref_name }}
+      notes_path: "CHANGELOG.md"
+    secrets: inherit
 
-      - name: Run Codeberg Notes Action
-        uses: ./.github/actions/codeberg_notes
-        with:
-          release_tag: "${{ github.ref_name }}"
-          notes_path: "CHANGELOG.md"
-          dry_run: "${{ env.DRY_RUN }}"
-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Final: Reset INCLUDE_GIT_REVISION (inline)
+  # ─────────────────────────────────────────────────────────────────────────────
   reset_git_revision:
     name: Reset Git Revision
     runs-on: ubuntu-latest
@@ -138,7 +124,9 @@ jobs:
         run: |
           sed -i 's/set(INCLUDE_GIT_REVISION OFF)/set(INCLUDE_GIT_REVISION ON)/' cmake/Version.cmake
 
-  # Global test-mode gate — runs after all jobs and intentionally fails when enabled
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Global test-mode gate — runs after all jobs and intentionally fails if enabled
+  # ─────────────────────────────────────────────────────────────────────────────
   fail_if_test_mode:
     name: Fail run if global test mode is enabled
     runs-on: ubuntu-latest
