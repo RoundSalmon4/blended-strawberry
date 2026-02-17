@@ -68,7 +68,7 @@ jobs:
     uses: RoundSalmon4/blended-strawberry/.github/workflows/codeberg.yml@master
     with:
       dry_run: ${{ inputs.dry_run }}
-      # codeberg_url: "https://codeberg.org/you/repo.git"  # uncomment / set if needed
+      # codeberg_url: "https://codeberg.org/you/repo.git"  # <-- set if your workflow expects it
     secrets: inherit
 
   # 5) Codeberg Release (reusable workflow)
