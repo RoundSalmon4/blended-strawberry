@@ -38,7 +38,7 @@ Il codice sorgente è disponibile su &apos;%1&apos;</translation>
     </message>
     <message>
       <source>You can sponsor the author on %1 or %2. You can also make a one-time payment through %3.</source>
-      <translation type="unfinished">Puoi sponsorizzare l&apos;autore su &apos;%1&apos; o &apos;%2&apos;. 
+      <translation>Puoi sponsorizzare l&apos;autore su &apos;%1&apos; o &apos;%2&apos;. 
 Puoi anche effettuare un pagamento una tantum tramite &apos;%3&apos;.</translation>
     </message>
     <message>
@@ -582,6 +582,10 @@ Puoi anche effettuare un pagamento una tantum tramite &apos;%3&apos;.</translati
       <translation>Migliorare l&apos;ascolto in cuffia di registrazioni audio stereo (bs2b)</translation>
     </message>
     <message>
+      <source>Use playbin3 when available</source>
+      <translation type="unfinished">Usa playbin3 quando disponibile</translation>
+    </message>
+    <message>
       <source>Enable HTTP/2 for streaming</source>
       <translation>Abilita HTTP/2 per lo streaming</translation>
     </message>
@@ -1093,8 +1097,16 @@ Se non ci saranno corrispondenze, userà l&apos;immagine più grande che si trov
       <translation type="unfinished">Use various artists for compilation albums</translation>
     </message>
     <message>
-      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artist names</source>
-      <translation type="unfinished">Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artist names</translation>
+      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artists, composers and performers</source>
+      <translation type="unfinished">Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artists, composers and performers</translation>
+    </message>
+    <message>
+      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting albums</source>
+      <translation type="unfinished">Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting albums</translation>
+    </message>
+    <message>
+      <source>Use sort tags for sorting when available</source>
+      <translation type="unfinished">Use sort tags for sorting when available</translation>
     </message>
     <message>
       <source>Album cover pixmap cache</source>
@@ -3989,7 +4001,7 @@ Prima di iniziare ti suggeriamo di eseguire il backup del database.</translation
     </message>
     <message>
       <source>Shuffle grouping</source>
-      <translation type="unfinished">Mescola raggruppando</translation>
+      <translation>Mescola raggruppando</translation>
     </message>
     <message>
       <source>Don&apos;t repeat</source>
@@ -4649,7 +4661,7 @@ Non è stato possibile eliminare i seguenti file:</translation>
     </message>
     <message>
       <source>Shuffle grouping</source>
-      <translation type="unfinished">Mescola raggruppando</translation>
+      <translation>Mescola raggruppando</translation>
     </message>
   </context>
   <context>

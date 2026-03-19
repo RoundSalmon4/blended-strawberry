@@ -37,7 +37,7 @@
     </message>
     <message>
       <source>You can sponsor the author on %1 or %2. You can also make a one-time payment through %3.</source>
-      <translation type="unfinished">Вы можете материально поддержать автора на %1 или %2. Также можно произвести единовременный платёж на %3.</translation>
+      <translation>Вы можете материально поддержать автора на %1 или %2. Также можно произвести единовременный платёж на %3.</translation>
     </message>
     <message>
       <source>Author and maintainer</source>
@@ -580,6 +580,10 @@
       <translation>Улучшить прослушивание стереозаписей через наушники (bs2b)</translation>
     </message>
     <message>
+      <source>Use playbin3 when available</source>
+      <translation type="unfinished">Use playbin3 when available</translation>
+    </message>
+    <message>
       <source>Enable HTTP/2 for streaming</source>
       <translation>Включить HTTP/2 для проигрывания потоков</translation>
     </message>
@@ -1091,8 +1095,16 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>Использовать разных артистов для альбомов-компиляций</translation>
     </message>
     <message>
-      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artist names</source>
-      <translation>Пропускать начальные артикли («the», «a», «an») при сортировке имён артистов</translation>
+      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artists, composers and performers</source>
+      <translation type="unfinished">Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artists, composers and performers</translation>
+    </message>
+    <message>
+      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting albums</source>
+      <translation type="unfinished">Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting albums</translation>
+    </message>
+    <message>
+      <source>Use sort tags for sorting when available</source>
+      <translation type="unfinished">Use sort tags for sorting when available</translation>
     </message>
     <message>
       <source>Album cover pixmap cache</source>
@@ -3984,7 +3996,7 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
     <message>
       <source>Shuffle grouping</source>
-      <translation type="unfinished">Перемешать группировка</translation>
+      <translation>Перемешать группировка</translation>
     </message>
     <message>
       <source>Don&apos;t repeat</source>
@@ -4644,7 +4656,7 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
     <message>
       <source>Shuffle grouping</source>
-      <translation type="unfinished">Перемешать группировка</translation>
+      <translation>Перемешать группировка</translation>
     </message>
   </context>
   <context>

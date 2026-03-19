@@ -37,7 +37,7 @@
     </message>
     <message>
       <source>You can sponsor the author on %1 or %2. You can also make a one-time payment through %3.</source>
-      <translation type="unfinished">Możesz sponsorować autora na %1 lub %2. Możesz także dokonać jednorazowej wpłaty poprzez %3.</translation>
+      <translation>Możesz sponsorować autora na %1 lub %2. Możesz także dokonać jednorazowej wpłaty poprzez %3.</translation>
     </message>
     <message>
       <source>Author and maintainer</source>
@@ -580,6 +580,10 @@
       <translation type="unfinished">Improve headphone listening of stereo audio records (bs2b)</translation>
     </message>
     <message>
+      <source>Use playbin3 when available</source>
+      <translation type="unfinished">Use playbin3 when available</translation>
+    </message>
+    <message>
       <source>Enable HTTP/2 for streaming</source>
       <translation type="unfinished">Enable HTTP/2 for streaming</translation>
     </message>
@@ -1091,8 +1095,16 @@ W przypadku braku takich plików użyty zostanie największy obraz z danego kata
       <translation type="unfinished">Use various artists for compilation albums</translation>
     </message>
     <message>
-      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artist names</source>
-      <translation type="unfinished">Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artist names</translation>
+      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artists, composers and performers</source>
+      <translation type="unfinished">Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artists, composers and performers</translation>
+    </message>
+    <message>
+      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting albums</source>
+      <translation type="unfinished">Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting albums</translation>
+    </message>
+    <message>
+      <source>Use sort tags for sorting when available</source>
+      <translation type="unfinished">Use sort tags for sorting when available</translation>
     </message>
     <message>
       <source>Album cover pixmap cache</source>
@@ -3984,7 +3996,7 @@ W przypadku braku takich plików użyty zostanie największy obraz z danego kata
     </message>
     <message>
       <source>Shuffle grouping</source>
-      <translation type="unfinished">Losuj grupowanie</translation>
+      <translation>Losuj grupowanie</translation>
     </message>
     <message>
       <source>Don&apos;t repeat</source>
@@ -4646,7 +4658,7 @@ tekstu zostanie ukryty.&lt;/p&gt;</translation>
     </message>
     <message>
       <source>Shuffle grouping</source>
-      <translation type="unfinished">Losuj grupowanie</translation>
+      <translation>Losuj grupowanie</translation>
     </message>
   </context>
   <context>

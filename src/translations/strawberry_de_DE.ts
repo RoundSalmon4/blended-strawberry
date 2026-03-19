@@ -37,7 +37,7 @@
     </message>
     <message>
       <source>You can sponsor the author on %1 or %2. You can also make a one-time payment through %3.</source>
-      <translation type="unfinished">Sie können den Autor auf %1 oder %2 sponsern. Sie können auch eine einmalige Zahlung über %3 vornehmen.</translation>
+      <translation>Sie können den Autor auf %1 oder %2 sponsern. Sie können auch eine einmalige Zahlung über %3 vornehmen.</translation>
     </message>
     <message>
       <source>Author and maintainer</source>
@@ -580,6 +580,10 @@
       <translation>Kopfhörer-Wiedergabe von Stereo-Aufnahmen verbessern (bs2b)</translation>
     </message>
     <message>
+      <source>Use playbin3 when available</source>
+      <translation type="unfinished">playbin3 benutzen, wenn verfügbar</translation>
+    </message>
+    <message>
       <source>Enable HTTP/2 for streaming</source>
       <translation>HTTP/2 für Streaming aktivieren</translation>
     </message>
@@ -1091,8 +1095,16 @@ Falls es keine Treffer gibt, wird das größte Bild aus dem Verzeichnis ausgewä
       <translation type="unfinished">Use various artists for compilation albums</translation>
     </message>
     <message>
-      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artist names</source>
-      <translation>Führende Artikel (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) beim Sortieren von Interpreten überspringen</translation>
+      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artists, composers and performers</source>
+      <translation type="unfinished">Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artists, composers and performers</translation>
+    </message>
+    <message>
+      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting albums</source>
+      <translation type="unfinished">Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting albums</translation>
+    </message>
+    <message>
+      <source>Use sort tags for sorting when available</source>
+      <translation type="unfinished">Use sort tags for sorting when available</translation>
     </message>
     <message>
       <source>Album cover pixmap cache</source>
@@ -3984,7 +3996,7 @@ Falls es keine Treffer gibt, wird das größte Bild aus dem Verzeichnis ausgewä
     </message>
     <message>
       <source>Shuffle grouping</source>
-      <translation type="unfinished">Zufällige Titelsortierung</translation>
+      <translation>Zufällige Titelsortierung</translation>
     </message>
     <message>
       <source>Don&apos;t repeat</source>
@@ -4642,7 +4654,7 @@ Falls es keine Treffer gibt, wird das größte Bild aus dem Verzeichnis ausgewä
     </message>
     <message>
       <source>Shuffle grouping</source>
-      <translation type="unfinished">Zufällige Titelsortierung</translation>
+      <translation>Zufällige Titelsortierung</translation>
     </message>
   </context>
   <context>
