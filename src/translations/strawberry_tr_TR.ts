@@ -37,7 +37,7 @@
     </message>
     <message>
       <source>You can sponsor the author on %1 or %2. You can also make a one-time payment through %3.</source>
-      <translation type="unfinished">Geliştiriciye %1 veya %2 üzerinden sponsor olabilirsiniz. Ayrıca %3 üzerinden tek seferlik ödeme yapabilirsiniz.</translation>
+      <translation>Geliştiriciye %1 veya %2 üzerinden sponsor olabilirsiniz. Ayrıca %3 üzerinden tek seferlik ödeme yapabilirsiniz.</translation>
     </message>
     <message>
       <source>Author and maintainer</source>
@@ -580,6 +580,10 @@
       <translation type="unfinished">Improve headphone listening of stereo audio records (bs2b)</translation>
     </message>
     <message>
+      <source>Use playbin3 when available</source>
+      <translation type="unfinished">Use playbin3 when available</translation>
+    </message>
+    <message>
       <source>Enable HTTP/2 for streaming</source>
       <translation type="unfinished">Enable HTTP/2 for streaming</translation>
     </message>
@@ -1091,8 +1095,16 @@ If there are no matches then it will use the largest image in the directory.</tr
       <translation>Derleme albümleri için Çeşitli Sanatçılar kullan</translation>
     </message>
     <message>
-      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artist names</source>
-      <translation>"the", "a", "an' gibi başlıkları yok say</translation>
+      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artists, composers and performers</source>
+      <translation type="unfinished">Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artists, composers and performers</translation>
+    </message>
+    <message>
+      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting albums</source>
+      <translation type="unfinished">Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting albums</translation>
+    </message>
+    <message>
+      <source>Use sort tags for sorting when available</source>
+      <translation type="unfinished">Use sort tags for sorting when available</translation>
     </message>
     <message>
       <source>Album cover pixmap cache</source>
@@ -3984,7 +3996,7 @@ If there are no matches then it will use the largest image in the directory.</tr
     </message>
     <message>
       <source>Shuffle grouping</source>
-      <translation type="unfinished">Gruplama karıştır</translation>
+      <translation>Gruplama karıştır</translation>
     </message>
     <message>
       <source>Don&apos;t repeat</source>
@@ -4642,7 +4654,7 @@ If there are no matches then it will use the largest image in the directory.</tr
     </message>
     <message>
       <source>Shuffle grouping</source>
-      <translation type="unfinished">Gruplama karıştır</translation>
+      <translation>Gruplama karıştır</translation>
     </message>
   </context>
   <context>
