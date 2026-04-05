@@ -365,10 +365,6 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Settings require restart.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Tabbar colors</source>
         <translation type="unfinished"></translation>
     </message>
@@ -520,6 +516,10 @@
         <source>Select background image</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>You need to restart Strawberry for this setting to take affect.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>BackendSettingsPage</name>
@@ -580,8 +580,8 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-      <source>Use playbin3 when available</source>
-      <translation type="unfinished"></translation>
+        <source>Use playbin3 when available</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Enable HTTP/2 for streaming</source>
@@ -693,6 +693,10 @@
     </message>
     <message>
         <source>Fade out on pause / fade in on resume</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>You need to restart Strawberry for this setting to take affect</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -836,7 +840,11 @@
     </message>
 </context>
 <context>
-    <name>CddaSongLoader</name>
+    <name>CDDASongLoader</name>
+    <message>
+        <source>Could not create cdiocddasrc</source>
+        <translation type="unfinished"></translation>
+    </message>
     <message>
         <source>Error while setting CDDA device to ready state.</source>
         <translation type="unfinished"></translation>
@@ -995,6 +1003,10 @@
 <context>
     <name>CollectionLibrary</name>
     <message>
+        <source>Support for sort tags artist, album, album artist, title, composer, and performer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Saving playcounts and ratings</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1094,16 +1106,16 @@ If there are no matches then it will use the largest image in the directory.</so
         <translation type="unfinished"></translation>
     </message>
     <message>
-      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artists, composers and performers</source>
-      <translation type="unfinished"></translation>
+        <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting artists, composers and performers</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting albums</source>
-      <translation type="unfinished"></translation>
+        <source>Skip leading articles (&quot;the&quot;, &quot;a&quot;, &quot;an&quot;) when sorting albums</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <source>Use sort tags for sorting when available</source>
-      <translation type="unfinished"></translation>
+        <source>Use sort tags for sorting when available</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Album cover pixmap cache</source>
@@ -1441,11 +1453,31 @@ If there are no matches then it will use the largest image in the directory.</so
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>%originalyear%</source>
+        <source>Add song original year tag</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Add song original year tag</source>
+        <source>Add song artistsort tag</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add song albumartistsort tag</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add song titlesort tag</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add song composersort tag</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add song performersort tag</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add song albumsort tag</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1469,14 +1501,6 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
     <message>
         <source>Bitrate</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>EBU R 128 Integrated Loudness</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>EBU R 128 Loudness Range</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1988,6 +2012,13 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
 </context>
 <context>
+    <name>DiscordRichPresence</name>
+    <message>
+        <source>on </source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>DynamicPlaylistControls</name>
     <message>
         <source>Dynamic mode is on</source>
@@ -2297,6 +2328,42 @@ If there are no matches then it will use the largest image in the directory.</so
         <source>Could not write metadata to %1: %2</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>ID3v2 version:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>2.3</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>2.4</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Performer sort</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Title sort</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Album artist sort</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Artist sort</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Album sort</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Composer sort</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>Equalizer</name>
@@ -2424,6 +2491,10 @@ If there are no matches then it will use the largest image in the directory.</so
         <source>Are you sure you want to delete the &quot;%1&quot; preset?</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>You need to restart playback for this setting to take affect.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>EqualizerSlider</name>
@@ -2483,6 +2554,22 @@ If there are no matches then it will use the largest image in the directory.</so
         <source>Form</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Add root directory</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove selected root directory</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Toggle between list and tree view</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select folder to add as tree root</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>FileViewList</name>
@@ -2520,6 +2607,49 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
     <message>
         <source>Show in file browser...</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>FileViewTree</name>
+    <message>
+        <source>Append to current playlist</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Replace current playlist</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open in new playlist</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy to collection...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Move to collection...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy to device...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete from disk...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Edit track information...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show in file browser...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Files</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2565,29 +2695,6 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
     <message>
         <source>An error occurred loading the iTunes database</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>GeniusLyricsProvider</name>
-    <message>
-        <source>Genius Authentication</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Please open this URL in your browser</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Redirect missing token code!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Received invalid reply from web browser.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Redirect from Genius is missing query items code or state.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2945,6 +3052,41 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
 </context>
 <context>
+    <name>LastFMScrobbler</name>
+    <message>
+        <source>%1 Scrobbler Authentication</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open URL in web browser?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Press &quot;Save&quot; to copy the URL to clipboard and manually open it in a web browser.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not open URL. Please open this URL in your browser</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invalid reply from web browser. Missing token.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Received invalid reply from web browser. Try another browser.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Scrobbler %1 is not authenticated!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Scrobbler %1 error: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>LastPlayedItemDelegate</name>
     <message>
         <source>Never</source>
@@ -2960,22 +3102,6 @@ If there are no matches then it will use the largest image in the directory.</so
 </context>
 <context>
     <name>ListenBrainzScrobbler</name>
-    <message>
-        <source>ListenBrainz Authentication</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Please open this URL in your browser</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Redirect missing token code!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Received invalid reply from web browser.</source>
-        <translation type="unfinished"></translation>
-    </message>
     <message>
         <source>Unable to scrobble %1 - %2 because of error: %3</source>
         <translation type="unfinished"></translation>
@@ -3431,6 +3557,10 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
     <message>
         <source>Rescan song(s)...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fetch metadata from service</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -3938,6 +4068,61 @@ If there are no matches then it will use the largest image in the directory.</so
         <source>Drag to reposition</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Discord</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable Rich Presence</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&quot;Listening to...&quot;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Strawberry</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Artist name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Song title</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>OAuthenticator</name>
+    <message>
+        <source>Authentication</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please open this URL in your browser</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Received invalid reply from web browser.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Redirect URL is missing query.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Request URL is missing code!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Request URL is missing state!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Request URL has wrong state %1 != %2</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>OSDBase</name>
@@ -4208,6 +4393,14 @@ If there are no matches then it will use the largest image in the directory.</so
         <source>Don&apos;t know how to handle %1</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>File %1 does not exist</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not read file %1: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>PlayingWidget</name>
@@ -4243,11 +4436,23 @@ If there are no matches then it will use the largest image in the directory.</so
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Title Sort</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Artist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Artist Sort</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Album</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Album Sort</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4279,11 +4484,23 @@ If there are no matches then it will use the largest image in the directory.</so
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Album Artist Sort</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Composer</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Composer Sort</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Performer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Performer Sort</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4315,7 +4532,7 @@ If there are no matches then it will use the largest image in the directory.</so
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>File Name</source>
+        <source>Initial key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4347,11 +4564,23 @@ If there are no matches then it will use the largest image in the directory.</so
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Moodbar</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>BPM</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Mood</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Rating</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>URL</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4476,6 +4705,10 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
     <message>
         <source>Playlist</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy songs to playlist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4979,10 +5212,6 @@ Are you sure you want to continue?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>File %1 is not recognized as a valid audio file.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>1 day</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5059,7 +5288,7 @@ Are you sure you want to continue?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Could save file</source>
+        <source>Could not save file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -5083,8 +5312,8 @@ Are you sure you want to continue?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-      <source>A word can be excluded with a preceding &quot;%1&quot;, if you need to search for a word including &quot;%1&quot;, place quotes around the word.</source>
-      <translation type="unfinished"></translation>
+        <source>A word can be excluded with a preceding &quot;%1&quot;, if you need to search for a word including &quot;%1&quot;, place quotes around the word.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>rating</source>
@@ -5300,6 +5529,17 @@ Are you sure you want to continue?</source>
     </message>
 </context>
 <context>
+    <name>QobuzMetadataRequest</name>
+    <message>
+        <source>Not authenticated</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No track ID</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>QobuzRequest</name>
     <message>
         <source>Receiving artists...</source>
@@ -5473,6 +5713,34 @@ Are you sure you want to continue?</source>
     </message>
     <message>
         <source>Authentication failed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fetching...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Credentials fetched</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>App ID and secret have been successfully fetched from the Qobuz web player.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Credential fetch failed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fetch Credentials</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Automatically fetch app ID and secret from Qobuz web player</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove (Remastered), etc from song titles</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -5810,10 +6078,6 @@ Are you sure you want to continue?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Libre.fm</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Listenbrainz</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5839,41 +6103,6 @@ Are you sure you want to continue?</source>
     </message>
     <message>
         <source>Spotify</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>ScrobblingAPI20</name>
-    <message>
-        <source>%1 Scrobbler Authentication</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Open URL in web browser?</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Press &quot;Save&quot; to copy the URL to clipboard and manually open it in a web browser.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Could not open URL. Please open this URL in your browser</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Invalid reply from web browser. Missing token.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Received invalid reply from web browser. Try another browser.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Scrobbler %1 is not authenticated!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Scrobbler %1 error: %2</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -6157,6 +6386,14 @@ Are you sure you want to continue?</source>
         <source>Edit smart playlist...</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Are you sure you want to restore the default smart playlists? This will remove all custom smart playlists</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Restore defaults</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>SnapDialog</name>
@@ -6263,6 +6500,21 @@ Are you sure you want to continue?</source>
     </message>
 </context>
 <context>
+    <name>SpotifyMetadataRequest</name>
+    <message>
+        <source>Not authenticated</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No track ID</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No pending song for track ID</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>SpotifyRequest</name>
     <message>
         <source>Authenticating...</source>
@@ -6319,22 +6571,6 @@ Are you sure you want to continue?</source>
 </context>
 <context>
     <name>SpotifyService</name>
-    <message>
-        <source>Spotify Authentication</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Please open this URL in your browser</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Redirect missing token code or state!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Received invalid reply from web browser.</source>
-        <translation type="unfinished"></translation>
-    </message>
     <message>
         <source>Not authenticated with Spotify.</source>
         <translation type="unfinished"></translation>
@@ -6396,6 +6632,10 @@ Are you sure you want to continue?</source>
     </message>
     <message>
         <source>Authentication failed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove (Remastered), etc from song titles</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -6734,10 +6974,6 @@ Are you sure you want to continue?</source>
 <context>
     <name>TidalRequest</name>
     <message>
-        <source>Authenticating...</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Receiving artists...</source>
         <translation type="unfinished"></translation>
     </message>
@@ -6785,31 +7021,7 @@ Are you sure you want to continue?</source>
 <context>
     <name>TidalService</name>
     <message>
-        <source>Reply from Tidal is missing query items.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Missing Tidal API token.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Missing Tidal username.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Missing Tidal password.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Not authenticated with Tidal and reached maximum number of login attempts.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Not authenticated with Tidal.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Missing Tidal API token, username or password.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -6832,23 +7044,7 @@ Are you sure you want to continue?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Use OAuth</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Client ID</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>API Token</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Username</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Password</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -6912,19 +7108,11 @@ Are you sure you want to continue?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Missing API token.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Missing username.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Missing password.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Authentication failed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove (Remastered), etc from song titles</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -6932,10 +7120,6 @@ Are you sure you want to continue?</source>
     <name>TidalStreamURLRequest</name>
     <message>
         <source>Not authenticated with Tidal.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Missing Tidal API token, username or password.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -7007,6 +7191,10 @@ Are you sure you want to continue?</source>
     </message>
     <message>
         <source>Saving tracks</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Album artist</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
