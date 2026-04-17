@@ -76,18 +76,17 @@ void AcoustidClient::Start(const int id, const QString &fingerprint, int duratio
 
   const ParamList params = ParamList() << Param(u"format"_s, u"json"_s)
                                        << Param(u"client"_s, QLatin1String(kClientId))
-                                       << Param(u"duration"_s, QString::number(duration_msec / kMsecPerSec))
+                                       << Param(u"duration"_s, QString::number(std::max(1LL, duration_msec / kMsecPerSec)))
                                        << Param(u"meta"_s, u"recordingids+sources"_s)
                                        << Param(u"fingerprint"_s, fingerprint);
 
   QUrlQuery url_query;
   url_query.setQueryItems(params);
-  QUrl url(QString::fromLatin1(kUrl));
-  url.setQuery(url_query);
-
-  QNetworkRequest network_request(url);
+  const QByteArray data = url_query.toString(QUrl::FullyEncoded).toUtf8();
+  QNetworkRequest network_request(QUrl(QString::fromLatin1(kUrl)));
   network_request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
-  QNetworkReply *reply = network_->get(network_request);
+  network_request.setHeader(QNetworkRequest::ContentTypeHeader, u"application/x-www-form-urlencoded"_s);
+  QNetworkReply *reply = network_->post(network_request, data);
   QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, id]() { RequestFinished(reply, id); });
   requests_[id] = reply;
 

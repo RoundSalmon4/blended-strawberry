@@ -920,10 +920,6 @@
       <translation>Quản lý các nhóm đã lưu</translation>
     </message>
     <message>
-      <source>Show</source>
-      <translation>Hiện</translation>
-    </message>
-    <message>
       <source>Any rating</source>
       <translation type="unfinished">Any rating</translation>
     </message>
@@ -948,12 +944,16 @@
       <translation type="unfinished">Rating greater than 4 stars</translation>
     </message>
     <message>
-      <source>Rating</source>
-      <translation type="unfinished">Rating</translation>
-    </message>
-    <message>
       <source>Group by</source>
       <translation>Nhóm theo</translation>
+    </message>
+    <message>
+      <source>Filter by age</source>
+      <translation type="unfinished">Filter by age</translation>
+    </message>
+    <message>
+      <source>Filter by rating</source>
+      <translation type="unfinished">Filter by rating</translation>
     </message>
     <message>
       <source>Display options</source>
@@ -5215,6 +5215,10 @@ Bạn có chắc chắn muốn tiếp tục không?</translation>
       <translation>In thông tin phiên bản</translation>
     </message>
     <message>
+      <source>Create fingerprint</source>
+      <translation type="unfinished">Create fingerprint</translation>
+    </message>
+    <message>
       <source>Failed to create directory %1.</source>
       <translation>Tạo thư mục %1 thất bại.</translation>
     </message>
@@ -5621,24 +5625,44 @@ Bạn có chắc chắn muốn tiếp tục không?</translation>
   <context>
     <name>QobuzService</name>
     <message>
-      <source>Authenticating...</source>
-      <translation>Đang xác thực...</translation>
-    </message>
-    <message>
-      <source>Maximum number of login attempts reached.</source>
-      <translation>Đã đạt số lần thử đăng nhập tối đa.</translation>
-    </message>
-    <message>
       <source>Missing Qobuz app ID.</source>
       <translation>Thiếu ID ứng dụng Qobuz.</translation>
     </message>
     <message>
-      <source>Missing Qobuz username.</source>
-      <translation>Thiếu tên người dùng Qobuz.</translation>
+      <source>Missing app ID. Please fetch credentials first.</source>
+      <translation type="unfinished">Missing app ID. Please fetch credentials first.</translation>
     </message>
     <message>
-      <source>Missing Qobuz password.</source>
-      <translation>Thiếu mật khẩu Qobuz.</translation>
+      <source>Missing app secret. Please fetch credentials first.</source>
+      <translation type="unfinished">Missing app secret. Please fetch credentials first.</translation>
+    </message>
+    <message>
+      <source>Missing private key. Please fetch credentials first.</source>
+      <translation type="unfinished">Missing private key. Please fetch credentials first.</translation>
+    </message>
+    <message>
+      <source>Failed to start local server for OAuth redirect: %1</source>
+      <translation type="unfinished">Failed to start local server for OAuth redirect: %1</translation>
+    </message>
+    <message>
+      <source>Failed to open the web browser. Please open this URL manually: %1</source>
+      <translation type="unfinished">Failed to open the web browser. Please open this URL manually: %1</translation>
+    </message>
+    <message>
+      <source>Waiting for browser authentication...</source>
+      <translation type="unfinished">Waiting for browser authentication...</translation>
+    </message>
+    <message>
+      <source>OAuth redirect failed: %1</source>
+      <translation type="unfinished">OAuth redirect failed: %1</translation>
+    </message>
+    <message>
+      <source>OAuth redirect is missing authorization code.</source>
+      <translation type="unfinished">OAuth redirect is missing authorization code.</translation>
+    </message>
+    <message>
+      <source>Exchanging authorization code...</source>
+      <translation type="unfinished">Exchanging authorization code...</translation>
     </message>
     <message>
       <source>Not authenticated with Qobuz.</source>
@@ -5647,6 +5671,10 @@ Bạn có chắc chắn muốn tiếp tục không?</translation>
     <message>
       <source>Missing Qobuz app ID or secret.</source>
       <translation>Thiếu ID ứng dụng hoặc mã bí mật Qobuz.</translation>
+    </message>
+    <message>
+      <source>Not authenticated. Please login to Qobuz in the settings.</source>
+      <translation type="unfinished">Not authenticated. Please login to Qobuz in the settings.</translation>
     </message>
   </context>
   <context>
@@ -5660,24 +5688,12 @@ Bạn có chắc chắn muốn tiếp tục không?</translation>
       <translation>Bật</translation>
     </message>
     <message>
-      <source>Qobuz support is not official and requires an API app ID and secret from a registered application to work. We can&apos;t help you getting these.</source>
-      <translation>Hỗ trợ Qobuz không chính thức và yêu cầu ID ứng dụng API và mã bí mật từ một ứng dụng đã đăng ký để hoạt động. Chúng tôi không thể giúp bạn lấy những thông tin này.</translation>
-    </message>
-    <message>
       <source>Authentication</source>
       <translation>Xác thực</translation>
     </message>
     <message>
       <source>App ID</source>
       <translation>ID ứng dụng</translation>
-    </message>
-    <message>
-      <source>Username</source>
-      <translation>Tên người dùng</translation>
-    </message>
-    <message>
-      <source>Password</source>
-      <translation>Mật khẩu</translation>
     </message>
     <message>
       <source>App Secret</source>
@@ -5720,24 +5736,20 @@ Bạn có chắc chắn muốn tiếp tục không?</translation>
       <translation>Tải ảnh bìa album</translation>
     </message>
     <message>
-      <source>Base64 encoded secret</source>
-      <translation>Mã bí mật mã hóa Base64</translation>
-    </message>
-    <message>
       <source>Configuration incomplete</source>
       <translation>Cấu hình chưa hoàn chỉnh</translation>
     </message>
     <message>
-      <source>Missing app id.</source>
-      <translation>Thiếu ID ứng dụng.</translation>
+      <source>Missing app id. Please fetch credentials first.</source>
+      <translation type="unfinished">Missing app id. Please fetch credentials first.</translation>
     </message>
     <message>
-      <source>Missing username.</source>
-      <translation>Thiếu tên người dùng.</translation>
+      <source>Missing app secret. Please fetch credentials first.</source>
+      <translation type="unfinished">Missing app secret. Please fetch credentials first.</translation>
     </message>
     <message>
-      <source>Missing password.</source>
-      <translation>Thiếu mật khẩu.</translation>
+      <source>Missing private key. Please fetch credentials first.</source>
+      <translation type="unfinished">Missing private key. Please fetch credentials first.</translation>
     </message>
     <message>
       <source>Authentication failed</source>
@@ -5752,8 +5764,8 @@ Bạn có chắc chắn muốn tiếp tục không?</translation>
       <translation type="unfinished">Credentials fetched</translation>
     </message>
     <message>
-      <source>App ID and secret have been successfully fetched from the Qobuz web player.</source>
-      <translation type="unfinished">App ID and secret have been successfully fetched from the Qobuz web player.</translation>
+      <source>Credentials have been successfully fetched. Click Login to authenticate via your browser.</source>
+      <translation type="unfinished">Credentials have been successfully fetched. Click Login to authenticate via your browser.</translation>
     </message>
     <message>
       <source>Credential fetch failed</source>
@@ -5764,12 +5776,16 @@ Bạn có chắc chắn muốn tiếp tục không?</translation>
       <translation type="unfinished">Fetch Credentials</translation>
     </message>
     <message>
-      <source>Automatically fetch app ID and secret from Qobuz web player</source>
-      <translation type="unfinished">Automatically fetch app ID and secret from Qobuz web player</translation>
-    </message>
-    <message>
       <source>Remove (Remastered), etc from song titles</source>
       <translation type="unfinished">Remove (Remastered), etc from song titles</translation>
+    </message>
+    <message>
+      <source>Private key</source>
+      <translation type="unfinished">Private key</translation>
+    </message>
+    <message>
+      <source>Automatically fetch app ID, app secret and private key from Qobuz web player</source>
+      <translation type="unfinished">Automatically fetch app ID, app secret and private key from Qobuz web player</translation>
     </message>
   </context>
   <context>
@@ -5777,6 +5793,10 @@ Bạn có chắc chắn muốn tiếp tục không?</translation>
     <message>
       <source>Missing Qobuz app ID or secret.</source>
       <translation>Thiếu ID ứng dụng hoặc mã bí mật Qobuz.</translation>
+    </message>
+    <message>
+      <source>Not authenticated. Please log in on the Qobuz settings page.</source>
+      <translation type="unfinished">Not authenticated. Please log in on the Qobuz settings page.</translation>
     </message>
     <message>
       <source>Cancelled.</source>
