@@ -148,7 +148,7 @@ jobs:
         if: ${{ env.DRY_RUN != 'true' }}
         uses: actions/github-script@v9
         env:
-          WORKFLOW_FILE: .github/workflows/update.yml
+          WORKFLOW_FILE: update.yml
         with:
           github-token: ${{ github.token }}
           script: |
@@ -215,13 +215,14 @@ jobs:
           github-token: ${{ github.token }}
           script: |
             const owner=process.env.OWNER, repo=process.env.REPO, ref=process.env.REF, wf=process.env.WORKFLOW_FILE;
+            const wfName=wf.split('/').pop();
             const wait=ms=>new Promise(r=>setTimeout(r,ms));
             const timeout=30*60*1000, poll=10000, dl=Date.now()+timeout;
             const startAt=new Date().toISOString();
             await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: wf, ref, inputs:{} });
             let runId=null;
             while(Date.now()<dl && !runId){
-              const runs=await github.paginate(github.rest.actions.listWorkflowRuns,{ owner, repo, workflow_id:wf, event:'workflow_dispatch', branch:ref, per_page:50 });
+              const runs=await github.paginate(github.rest.actions.listWorkflowRuns,{ owner, repo, workflow_id:wfName, event:'workflow_dispatch', branch:ref, per_page:50 });
               const c=runs.find(r=>new Date(r.created_at)>=new Date(startAt));
               if(c){ runId=c.id; core.info(`run=${runId}`); break; }
               await wait(poll);
@@ -229,7 +230,20 @@ jobs:
             if(!runId){ core.setFailed(`Timed out waiting for ${wf} run`); return; }
             while(Date.now()<dl){
               const { data: run }=await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
-              if(run.status==='completed'){ if(run.conclusion!=='success') core.setFailed(`${wf} concluded: ${run.conclusion}`); return; }
+              if(run.status==='completed'){
+                if(run.conclusion!=='success') core.setFailed(`${wf} concluded: ${run.conclusion}`);
+                return;
+              }
+              if(run.status==='in_progress' || run.status==='queued' || run.status==='waiting'){
+                core.info(`run status: ${run.status}`);
+                await wait(poll);
+                continue;
+              }
+              if(run.status==='pending'){
+                await wait(poll);
+                continue;
+              }
+              core.warning(`Unknown status: ${run.status}, waiting...`);
               await wait(poll);
             }
             core.setFailed(`Timed out waiting for ${wf} to complete`);
