@@ -2225,7 +2225,7 @@ void MainWindow::RescanSongs() {
     }
     else if (item->EffectiveMetadata().source() == Song::Source::LocalFile) {
       QPersistentModelIndex persistent_index = QPersistentModelIndex(source_index);
-      app_->playlist_manager()->current()->ItemReload(persistent_index, item->OriginalMetadata(), false);
+      app_->playlist_manager()->current()->ItemReload(persistent_index, false);
     }
   }
 
@@ -3064,8 +3064,8 @@ void MainWindow::CheckShowErrorDialog() {
 
 void MainWindow::CheckFullRescanRevisions() {
 
-  int from = app_->database()->startup_schema_version();
-  int to = app_->database()->current_schema_version();
+  const int from = app_->database()->startup_schema_version();
+  const int to = app_->database()->current_schema_version();
 
   // If we're restoring DB from scratch or nothing has changed, do nothing
   if (from == 0 || from == to) {
@@ -3074,7 +3074,7 @@ void MainWindow::CheckFullRescanRevisions() {
 
   // Collect all reasons
   QSet<QString> reasons;
-  for (int i = from; i <= to; ++i) {
+  for (int i = from + 1; i <= to; ++i) {
     QString reason = app_->collection()->full_rescan_reason(i);
     if (!reason.isEmpty()) {
       reasons.insert(reason);
@@ -3092,6 +3092,7 @@ void MainWindow::CheckFullRescanRevisions() {
       app_->collection()->FullScan();
     }
   }
+
 }
 
 void MainWindow::PlaylistViewSelectionModelChanged() {
@@ -3175,8 +3176,12 @@ void MainWindow::AutoCompleteTags() {
 
 void MainWindow::AutoCompleteTagsAccepted() {
 
-  for (PlaylistItemPtr item : std::as_const(autocomplete_tag_items_)) {
-    item->Reload();
+  for (int i = 0; i < autocomplete_tag_items_.count(); ++i) {
+    PlaylistItemPtr item = autocomplete_tag_items_.at(i);
+    const Song reloaded_song = item->Reload();
+    if (reloaded_song.is_valid()) {
+      item->SetOriginalMetadata(reloaded_song);
+    }
   }
   autocomplete_tag_items_.clear();
 
@@ -3189,7 +3194,7 @@ void MainWindow::HandleNotificationPreview(const OSDSettings::Type type, const Q
 
   if (!app_->playlist_manager()->current()->GetAllSongs().isEmpty()) {
     // Show a preview notification for the first song in the current playlist
-    osd_->ShowPreview(type, line1, line2, app_->playlist_manager()->current()->GetAllSongs().first());
+    osd_->ShowPreview(type, line1, line2, app_->playlist_manager()->current()->GetAllSongs().constFirst());
   }
   else {
     qLog(Debug) << "The current playlist is empty, showing a fake song";
@@ -3528,7 +3533,7 @@ void MainWindow::ProcessMetadataQueue() {
             if (fetched_song.length_nanosec() > 0) updated_song.set_length_nanosec(fetched_song.length_nanosec());
             if (fetched_song.art_automatic().isValid()) updated_song.set_art_automatic(fetched_song.art_automatic());
             playlist_item->SetOriginalMetadata(updated_song);
-            app_->playlist_manager()->current()->ItemReload(metadata_queue_entry.persistent_index, old_song, false);
+            app_->playlist_manager()->current()->ItemReload(metadata_queue_entry.persistent_index, false);
           }
         }
         request->deleteLater();
@@ -3578,7 +3583,7 @@ void MainWindow::ProcessMetadataQueue() {
             if (fetched_song.length_nanosec() > 0) updated_song.set_length_nanosec(fetched_song.length_nanosec());
             if (fetched_song.art_automatic().isValid()) updated_song.set_art_automatic(fetched_song.art_automatic());
             playlist_item->SetOriginalMetadata(updated_song);
-            app_->playlist_manager()->current()->ItemReload(metadata_queue_entry.persistent_index, old_song, false);
+            app_->playlist_manager()->current()->ItemReload(metadata_queue_entry.persistent_index, false);
           }
         }
         request->deleteLater();
