@@ -168,7 +168,7 @@ SettingsDialog::SettingsDialog(const SharedPtr<Player> player,
 
   // List box
   QObject::connect(ui_->list, &QTreeWidget::currentItemChanged, this, &SettingsDialog::CurrentItemChanged);
-  ui_->list->setCurrentItem(pages_[Page::Behaviour].item_);
+  ui_->list->setCurrentItem(pages_.value(Page::Behaviour).item_);
 
   // Make sure the list is big enough to show all the items
   ui_->list->setMinimumWidth(qobject_cast<QAbstractItemView*>(ui_->list)->sizeHintForColumn(0));  // clazy:exclude=unneeded-cast
@@ -341,7 +341,7 @@ void SettingsDialog::OpenAtPage(const Page page) {
     return;
   }
 
-  ui_->list->setCurrentItem(pages_[page].item_);
+  ui_->list->setCurrentItem(pages_.value(page).item_);
   show();
 
 }

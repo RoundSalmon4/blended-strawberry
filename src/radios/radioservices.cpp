@@ -101,8 +101,7 @@ RadioService *RadioServices::ServiceBySource(const Song::Source source) const {
 
 void RadioServices::ReloadSettings() {
 
-  const QList<RadioService*> services = services_.values();
-  for (RadioService *service : services) {
+  for (RadioService *service : std::as_const(services_)) {
     service->ReloadSettings();
   }
 
@@ -121,8 +120,7 @@ void RadioServices::RefreshChannels() {
   model_->Reset();
   backend_->DeleteChannelsAsync();
 
-  const QList<RadioService*> services = services_.values();
-  for (RadioService *service : services) {
+  for (RadioService *service : std::as_const(services_)) {
     service->GetChannels();
   }
 

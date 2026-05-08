@@ -2617,8 +2617,7 @@ void MainWindow::CommandlineOptionsReceived(const CommandlineOptions &options) {
   if (!options.urls().empty()) {
 
 #ifdef HAVE_TIDAL
-    const QList<QUrl> urls = options.urls();
-    for (const QUrl &url : urls) {
+    for (const QUrl &url : options.urls()) {
       if (url.scheme() == "tidal"_L1 && url.host() == "login"_L1) {
         Q_EMIT AuthorizationUrlReceived(url);
         return;
@@ -3417,8 +3416,8 @@ void MainWindow::DeleteFilesFinished(const SongList &songs_with_errors) {
   if (songs_with_errors.isEmpty()) return;
 
   OrganizeErrorDialog *dialog = new OrganizeErrorDialog(this);
+  dialog->setAttribute(Qt::WA_DeleteOnClose);
   dialog->Show(OrganizeErrorDialog::OperationType::Delete, songs_with_errors);
-  // It deletes itself when the user closes it
 
 }
 
@@ -3518,7 +3517,7 @@ void MainWindow::ProcessMetadataQueue() {
 #ifdef HAVE_QOBUZ
   if (metadata_queue_entry.source == Song::Source::Qobuz) {
     if (QobuzServicePtr qobuz_service = app_->streaming_services()->Service<QobuzService>()) {
-      QobuzMetadataRequest *request = new QobuzMetadataRequest(&*qobuz_service, qobuz_service->network());
+      QobuzMetadataRequest *request = new QobuzMetadataRequest(&*qobuz_service, qobuz_service->network(), this);
       QObject::connect(request, &QobuzMetadataRequest::MetadataReceived, this, [this, metadata_queue_entry, request](const QString &received_track_id, const Song &fetched_song) {
         Q_UNUSED(received_track_id);
         if (metadata_queue_entry.persistent_index.isValid() && fetched_song.is_valid()) {
@@ -3568,7 +3567,7 @@ void MainWindow::ProcessMetadataQueue() {
 #ifdef HAVE_SPOTIFY
   if (metadata_queue_entry.source == Song::Source::Spotify) {
     if (SpotifyServicePtr spotify_service = app_->streaming_services()->Service<SpotifyService>()) {
-      SpotifyMetadataRequest *request = new SpotifyMetadataRequest(&*spotify_service, app_->network());
+      SpotifyMetadataRequest *request = new SpotifyMetadataRequest(&*spotify_service, app_->network(), this);
       QObject::connect(request, &SpotifyMetadataRequest::MetadataReceived, this, [this, metadata_queue_entry, request](const QString &received_track_id, const Song &fetched_song) {
         Q_UNUSED(received_track_id);
         if (metadata_queue_entry.persistent_index.isValid() && fetched_song.is_valid()) {
