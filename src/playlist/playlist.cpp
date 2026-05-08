@@ -1321,7 +1321,7 @@ void Playlist::UpdateItems(SongList songs) {
         Q_EMIT dataChanged(index(i, 0), index(i, ColumnCount - 1));
         // Also update undo actions
         for (int y = 0; y < undo_stack_->count(); y++) {
-          QUndoCommand *undo_action = const_cast<QUndoCommand*>(undo_stack_->command(i));
+          QUndoCommand *undo_action = const_cast<QUndoCommand*>(undo_stack_->command(y));
           PlaylistUndoCommandInsertItems *undo_action_insert = dynamic_cast<PlaylistUndoCommandInsertItems*>(undo_action);
           if (undo_action_insert) {
             bool found_and_updated = undo_action_insert->UpdateItem(new_item);

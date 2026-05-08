@@ -372,7 +372,7 @@ void PlaylistManager::SetCurrentPlaylist(const int id) {
   }
 
   current_ = id;
-  Q_EMIT CurrentChanged(current(), playlists_[id].scroll_position);
+  Q_EMIT CurrentChanged(current(), playlists_.value(id).scroll_position);
   UpdateSummaryText();
 
 }
@@ -503,7 +503,7 @@ void PlaylistManager::InsertUrls(const int id, const QList<QUrl> &urls, const in
 
   Q_ASSERT(playlists_.contains(id));
 
-  playlists_[id].p->InsertUrls(urls, pos, play_now, enqueue);
+  playlists_.constFind(id)->p->InsertUrls(urls, pos, play_now, enqueue);
 
 }
 
@@ -511,7 +511,7 @@ void PlaylistManager::InsertSongs(const int id, const SongList &songs, const int
 
   Q_ASSERT(playlists_.contains(id));
 
-  playlists_[id].p->InsertSongs(songs, pos, play_now, enqueue);
+  playlists_.constFind(id)->p->InsertSongs(songs, pos, play_now, enqueue);
 
 }
 
@@ -519,7 +519,7 @@ void PlaylistManager::RemoveItemsWithoutUndo(const int id, const QList<int> &ind
 
   Q_ASSERT(playlists_.contains(id));
 
-  playlists_[id].p->RemoveItemsWithoutUndo(indices);
+  playlists_.constFind(id)->p->RemoveItemsWithoutUndo(indices);
 
 }
 

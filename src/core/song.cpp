@@ -2183,13 +2183,11 @@ QString Song::GetNameForNewPlaylist(const SongList &songs) {
     result = QObject::tr("Various artists");
   }
   else {
-    QStringList artist_names = artists.values();
-    result = artist_names.first();
+    result = *artists.cbegin();
   }
 
   if (!various_artists && albums.size() == 1) {
-    QStringList album_names = albums.values();
-    result += " - "_L1 + album_names.first();
+    result += " - "_L1 + *albums.cbegin();
   }
 
   return result;

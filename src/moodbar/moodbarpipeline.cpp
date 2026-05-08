@@ -170,9 +170,11 @@ void MoodbarPipeline::ReportError(GstMessage *msg) {
   gchar *debugs = nullptr;
 
   gst_message_parse_error(msg, &error, &debugs);
-  QString message = QString::fromLocal8Bit(error->message);
-
-  g_error_free(error);
+  QString message;
+  if (error) {
+    message = QString::fromLocal8Bit(error->message);
+    g_error_free(error);
+  }
   g_free(debugs);
 
   qLog(Error) << "Error processing" << url_ << ":" << message;
