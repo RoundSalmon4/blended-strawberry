@@ -146,9 +146,7 @@ SettingsDialog::SettingsDialog(const SharedPtr<Player> player,
   AddPage(Page::Moodbar, new MoodbarSettingsPage(this, this), iface);
 #endif
 
-#if defined(HAVE_SUBSONIC) || defined(HAVE_TIDAL) || defined(HAVE_SPOTIFY) || defined(HAVE_QOBUZ)
   QTreeWidgetItem *streaming = AddCategory(tr("Streaming"));
-#endif
 
   (void)streaming_services;
 #ifdef HAVE_SUBSONIC
