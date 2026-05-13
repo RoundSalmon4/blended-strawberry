@@ -219,8 +219,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -n "${{ inputs.tag }}" ]; then
-            TAG="${{ inputs.tag }}"
+          INPUT_TAG="${{ inputs.tag }}"
+          if [ -n "${INPUT_TAG}" ]; then
+            TAG="${INPUT_TAG}"
             echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
             echo "total=1" >> "$GITHUB_OUTPUT"
             echo "next_offset=0" >> "$GITHUB_OUTPUT"

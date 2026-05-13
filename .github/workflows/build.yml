@@ -28,7 +28,7 @@ jobs:
           for i in 12 13 14 15; do
             if [ -d "/Library/Developer/CommandLineTools/SDKs/MacOSX${i}.sdk" ]; then
               echo "Using macOS SDK ${i}"
-              echo "MACOSX_DEPLOYMENT_TARGET=${i}.0" >> $GITHUB_ENV
+              echo "MACOSX_DEPLOYMENT_TARGET=${i}.0" >> "$GITHUB_ENV"
               break
             fi
           done
@@ -39,13 +39,13 @@ jobs:
 
       - name: Set arch
         shell: bash
-        run: echo "arch=$(uname -m)" >> $GITHUB_ENV
+        run: echo "arch=$(uname -m)" >> "$GITHUB_ENV"
 
       - name: Set buildtype
-        run: echo "buildtype=$(echo ${{ matrix.buildtype }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+        run: echo "buildtype=$(echo ${{ matrix.buildtype }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
 
       - name: Set cmake buildtype
-        run: echo "cmake_buildtype=$(echo ${{ env.buildtype }} | awk '{print toupper(substr($0,0,1))tolower(substr($0,2))}')" >> $GITHUB_ENV
+        run: echo "cmake_buildtype=$(echo ${{ env.buildtype }} | awk '{print toupper(substr($0,0,1))tolower(substr($0,2))}')" >> "$GITHUB_ENV"
 
       - name: Uninstall homebrew
         run: |
@@ -67,10 +67,10 @@ jobs:
         run: sudo tar -C / -xf strawberry-macos-${{ env.arch }}-${{ env.buildtype }}.tar.xz
 
       - name: Set prefix path
-        run: echo "prefix_path=/opt/strawberry_macos_${{ env.arch }}_${{ env.buildtype }}" >> $GITHUB_ENV
+        run: echo "prefix_path=/opt/strawberry_macos_${{ env.arch }}_${{ env.buildtype }}" >> "$GITHUB_ENV"
 
       - name: Update PATH
-        run: echo "${{ env.prefix_path }}/bin" >> $GITHUB_PATH
+        run: echo "${{ env.prefix_path }}/bin" >> "$GITHUB_PATH"
 
       - name: Create Build Environment
         run: cmake -E make_directory build
@@ -146,7 +146,7 @@ jobs:
 
       - name: Set cmake buildtype
         shell: bash
-        run: echo "cmake_buildtype=$(echo ${{ matrix.buildtype }} | sed 's/.*/\u&/')" >> $GITHUB_ENV
+        run: echo "cmake_buildtype=$(echo ${{ matrix.buildtype }} | sed 's/.*/\u&/')" >> "$GITHUB_ENV"
 
       - name: Checkout
         uses: actions/checkout@v6
@@ -155,7 +155,7 @@ jobs:
           submodules: recursive
 
       - name: Add safe git directory
-        run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
+        run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
       - name: Create Build Environment
         run: cmake -E make_directory build
@@ -191,31 +191,31 @@ jobs:
 
       - name: Copy GIO modules
         working-directory: build
-        run: cp /strawberry-mxe/usr/${{ matrix.arch }}-w64-mingw32.shared/lib/gio/modules/{libgiognutls.dll,libgioopenssl.dll} ${GITHUB_WORKSPACE}/build/gio-modules/
+        run: cp /strawberry-mxe/usr/${{ matrix.arch }}-w64-mingw32.shared/lib/gio/modules/{libgiognutls.dll,libgioopenssl.dll} "${GITHUB_WORKSPACE}"/build/gio-modules/
 
       - name: Copy Qt platform plugins
         working-directory: build
-        run: cp /strawberry-mxe/usr/${{ matrix.arch }}-w64-mingw32.shared/qt6/plugins/platforms/qwindows.dll ${GITHUB_WORKSPACE}/build/platforms/
+        run: cp /strawberry-mxe/usr/${{ matrix.arch }}-w64-mingw32.shared/qt6/plugins/platforms/qwindows.dll "${GITHUB_WORKSPACE}"/build/platforms/
 
       - name: Copy Qt styles
         working-directory: build
-        run: cp /strawberry-mxe/usr/${{ matrix.arch }}-w64-mingw32.shared/qt6/plugins/styles/qmodernwindowsstyle.dll ${GITHUB_WORKSPACE}/build/styles/
+        run: cp /strawberry-mxe/usr/${{ matrix.arch }}-w64-mingw32.shared/qt6/plugins/styles/qmodernwindowsstyle.dll "${GITHUB_WORKSPACE}"/build/styles/
 
       - name: Copy Qt TLS plugins
         working-directory: build
-        run: cp /strawberry-mxe/usr/${{ matrix.arch }}-w64-mingw32.shared/qt6/plugins/tls/{qschannelbackend.dll,qopensslbackend.dll} ${GITHUB_WORKSPACE}/build/tls/
+        run: cp /strawberry-mxe/usr/${{ matrix.arch }}-w64-mingw32.shared/qt6/plugins/tls/{qschannelbackend.dll,qopensslbackend.dll} "${GITHUB_WORKSPACE}"/build/tls/
 
       - name: Copy Qt SQL drivers
         working-directory: build
-        run: cp /strawberry-mxe/usr/${{ matrix.arch }}-w64-mingw32.shared/qt6/plugins/sqldrivers/qsqlite.dll ${GITHUB_WORKSPACE}/build/sqldrivers/
+        run: cp /strawberry-mxe/usr/${{ matrix.arch }}-w64-mingw32.shared/qt6/plugins/sqldrivers/qsqlite.dll "${GITHUB_WORKSPACE}"/build/sqldrivers/
 
       - name: Copy Qt imageformats
         working-directory: build
-        run: cp /strawberry-mxe/usr/${{ matrix.arch }}-w64-mingw32.shared/qt6/plugins/imageformats/{qgif.dll,qico.dll,qjpeg.dll,qtiff.dll,qjp2.dll,qwebp.dll} ${GITHUB_WORKSPACE}/build/imageformats/
+        run: cp /strawberry-mxe/usr/${{ matrix.arch }}-w64-mingw32.shared/qt6/plugins/imageformats/{qgif.dll,qico.dll,qjpeg.dll,qtiff.dll,qjp2.dll,qwebp.dll} "${GITHUB_WORKSPACE}"/build/imageformats/
 
       - name: Copy gstreamer plugins
         working-directory: build
-        run: cp /strawberry-mxe/usr/${{ matrix.arch }}-w64-mingw32.shared/bin/gstreamer-1.0/*.dll ${GITHUB_WORKSPACE}/build/gstreamer-plugins/
+        run: cp /strawberry-mxe/usr/${{ matrix.arch }}-w64-mingw32.shared/bin/gstreamer-1.0/*.dll "${GITHUB_WORKSPACE}"/build/gstreamer-plugins/
 
       - name: Copy extra binaries
         working-directory: build
@@ -253,11 +253,11 @@ jobs:
 
       - name: Copy nsis files
         working-directory: build
-        run: cp ${GITHUB_WORKSPACE}/dist/windows/*.nsh ${GITHUB_WORKSPACE}/dist/windows/*.ico .
+        run: cp "${GITHUB_WORKSPACE}"/dist/windows/*.nsh "${GITHUB_WORKSPACE}"/dist/windows/*.ico .
 
       - name: Copy COPYING license file
         working-directory: build
-        run: cp ${GITHUB_WORKSPACE}/COPYING .
+        run: cp "${GITHUB_WORKSPACE}"/COPYING .
 
       - name: List files
         working-directory: build
@@ -268,7 +268,7 @@ jobs:
         working-directory: build
         run: |
           files_missing=
-          for i in $(ls -1 *.dll *.exe); do
+          for i in *.dll *.exe; do
             nsi_file_entry=$(grep -i "^\s\+File\s\+\"$i\"$" strawberry.nsi || true)
             if [ "${nsi_file_entry}" = "" ]; then
               echo "File ${i} is missing File entry."
@@ -345,13 +345,13 @@ jobs:
       - name: Set prefix path
         shell: bash
         run: |
-          echo "prefix_path_backslash=c:\strawberry_msvc_${{ matrix.arch }}_${{ matrix.buildtype }}" >> $GITHUB_ENV
-          echo "prefix_path_forwardslash=c:/strawberry_msvc_${{ matrix.arch }}_${{ matrix.buildtype }}" >> $GITHUB_ENV
-          echo "prefix_path_unix=/c/strawberry_msvc_${{ matrix.arch }}_${{ matrix.buildtype }}" >> $GITHUB_ENV
+          echo "prefix_path_backslash=c:\strawberry_msvc_${{ matrix.arch }}_${{ matrix.buildtype }}" >> "$GITHUB_ENV"
+          echo "prefix_path_forwardslash=c:/strawberry_msvc_${{ matrix.arch }}_${{ matrix.buildtype }}" >> "$GITHUB_ENV"
+          echo "prefix_path_unix=/c/strawberry_msvc_${{ matrix.arch }}_${{ matrix.buildtype }}" >> "$GITHUB_ENV"
 
       - name: Set cmake buildtype
         shell: bash
-        run: echo "cmake_buildtype=$(echo ${{ matrix.buildtype }} | sed 's/.*/\u&/')" >> $GITHUB_ENV
+        run: echo "cmake_buildtype=$(echo ${{ matrix.buildtype }} | sed 's/.*/\u&/')" >> "$GITHUB_ENV"
 
       - name: Show SDK versions
         shell: bash
@@ -360,12 +360,12 @@ jobs:
       - name: Set SDK version
         if: matrix.arch != 'arm64'
         shell: bash
-        run: echo "sdk_version=10.0.19041.0" >> $GITHUB_ENV
+        run: echo "sdk_version=10.0.19041.0" >> "$GITHUB_ENV"
 
       - name: Set SDK version
         if: matrix.arch == 'arm64'
         shell: bash
-        run: echo "sdk_version=10.0.26100.0" >> $GITHUB_ENV
+        run: echo "sdk_version=10.0.26100.0" >> "$GITHUB_ENV"
 
       - name: Install rsync
         shell: cmd
@@ -462,7 +462,7 @@ jobs:
 
       - name: Add safe git directory
         shell: bash
-        run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
+        run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
       - name: Create Build Environment
         shell: cmd
@@ -470,11 +470,11 @@ jobs:
 
       - name: Set ENABLE_WIN32_CONSOLE
         shell: bash
-        run: echo "enable_win32_console=$(test "${{ matrix.buildtype }}" = "debug" && echo "ON" || echo "OFF")" >> $GITHUB_ENV
+        run: echo "enable_win32_console=$(test "${{ matrix.buildtype }}" = "debug" && echo "ON" || echo "OFF")" >> "$GITHUB_ENV"
 
       - name: Set ENABLE_SPOTIFY
         shell: bash
-        run: echo "enable_spotify=$(test -f "${{ env.prefix_path_unix }}/lib/gstreamer-1.0/gstspotify.dll" && echo "ON" || echo "OFF")" >> $GITHUB_ENV
+        run: echo "enable_spotify=$(test -f "${{ env.prefix_path_unix }}/lib/gstreamer-1.0/gstspotify.dll" && echo "ON" || echo "OFF")" >> "$GITHUB_ENV"
 
       - name: Remove -lm from .pc files
         if: matrix.arch == 'arm64'
@@ -610,7 +610,7 @@ jobs:
         working-directory: build
         run: |
           files_missing=
-          for i in $(ls -1 *.dll *.exe); do
+          for i in *.dll *.exe; do
             nsi_file_entry=$(grep -i "^\s\+File\s\+\"$i\"$" strawberry.nsi || true)
             if [ "${nsi_file_entry}" = "" ]; then
               echo "File ${i} is missing File entry."
