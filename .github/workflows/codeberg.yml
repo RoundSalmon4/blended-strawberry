@@ -72,13 +72,12 @@ jobs:
           git remote remove codeberg 2>/dev/null || true
           git remote add codeberg "https://codeberg.org/unwanted9855/blended-strawberry.git"
           # Use git credential store for the token so it never appears in remote URLs
-          echo "https://codeberg.org" > /tmp/codeberg-credentials
-          git credential-store --file /tmp/codeberg-credentials store <<EOF
-protocol=https
-host=codeberg.org
-username=${CODEBERG_TOKEN}
-password=${CODEBERG_TOKEN}
-EOF
+          {
+            echo "protocol=https"
+            echo "host=codeberg.org"
+            echo "username=${CODEBERG_TOKEN}"
+            echo "password=${CODEBERG_TOKEN}"
+          } | git credential-store --file /tmp/codeberg-credentials store
           git config --global credential.helper "store --file /tmp/codeberg-credentials"
 
           # Make sure local is on the TARGET branch (create/update as needed)
