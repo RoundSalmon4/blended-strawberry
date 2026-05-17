@@ -370,13 +370,9 @@ void GeniusLyricsProvider::HandleLyricReply(QNetworkReply *reply, const int sear
   static const QRegularExpression start_tag(u"<div[^>]*>"_s);
   static const QRegularExpression end_tag(u"<\\/div>"_s);
   static const QRegularExpression lyrics_start(u"<div data-lyrics-container=[^>]+>"_s);
-
-  static const QRegularExpression regex_html_tag_span_trans(u"<span class=\"LyricsHeader__Translations[^>]*>[^<]*</span>"_s);
-  static const QRegularExpression regex_html_tag_div_ellipsis(u"<div class=\"LyricsHeader__TextEllipsis[^>]*>[^<]*</div>"_s);
-  static const QRegularExpression regex_html_tag_span_contribs(u"<span class=\"ContributorsCreditSong__Contributors[^>]*>[^<]*</span>"_s);
-  static const QRegularExpression regex_html_tag_div_bio(u"<div class=\"SongBioPreview__Container[^>]*>.*?</div>"_s);
+  static const QRegularExpression regex_html_lyrics_header(uR"((?(DEFINE)(?<balanced><div\b[^>]*>(?:[^<]++|<(?!/?div\b)|(?&balanced))*</div>))<div\b[^>]*class="LyricsHeader__Container[^"]*"[^>]*>(?:[^<]++|<(?!/?div\b)|(?&balanced))*</div>)"_s);
   static const QRegularExpression regex_html_tag_h2(u"<h2 [^>]*>[^<]*</h2>"_s);
-  static const QList<QRegularExpression> regex_removes{ regex_html_tag_span_trans, regex_html_tag_div_ellipsis, regex_html_tag_span_contribs, regex_html_tag_div_bio, regex_html_tag_h2 };
+  static const QList<QRegularExpression> regex_removes{ regex_html_lyrics_header, regex_html_tag_h2 };
 
   const QString lyrics = HtmlLyricsProvider::ParseLyricsFromHTML(QString::fromUtf8(data), start_tag, end_tag, lyrics_start, true, regex_removes);
   if (!lyrics.isEmpty()) {
