@@ -127,7 +127,7 @@ constexpr int kComboBoxIndex_ID3v2_4 = 1;
 const char EditTagDialog::kTagsDifferentHintText[] = QT_TR_NOOP("(different across multiple songs)");
 const char EditTagDialog::kArtDifferentHintText[] = QT_TR_NOOP("Different art across multiple songs.");
 
-#ifdef __clang_
+#ifdef __clang__
 #  pragma clang diagnostic pop
 #endif
 
@@ -1268,7 +1268,7 @@ void EditTagDialog::UpdateCover(const UpdateCoverAction cover_action, const Albu
       data_[idx.row()].current_.clear_art_automatic();
       data_[idx.row()].current_.set_art_unset(false);
     }
-    if (artist != data_[idx.row()].current_.effective_albumartist() || album != data_[idx.row()].current_.effective_albumartist()) {
+    if (artist != data_[idx.row()].current_.effective_albumartist() || album != data_[idx.row()].current_.album()) {
       artist.clear();
       album.clear();
     }
