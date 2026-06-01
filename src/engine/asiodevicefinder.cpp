@@ -41,7 +41,8 @@ EngineDeviceList AsioDeviceFinder::ListDevices() {
 
   for (DWORD i = 0; status == ERROR_SUCCESS; i++) {
     WCHAR key_name[256];
-    status = RegEnumKeyW(reg_key, i, key_name, sizeof(key_name));
+    // RegEnumKeyW expects the buffer size in characters, not bytes.
+    status = RegEnumKeyW(reg_key, i, key_name, sizeof(key_name) / sizeof(key_name[0]));
     EngineDevice device = GetDevice(reg_key, key_name);
     if (device.value.isValid()) {
       devices.append(device);
@@ -59,7 +60,7 @@ EngineDeviceList AsioDeviceFinder::ListDevices() {
 EngineDevice AsioDeviceFinder::GetDevice(HKEY reg_key, LPWSTR key_name) {
 
   HKEY sub_key = nullptr;
-  const QScopeGuard scopeguard_sub_key = qScopeGuard([sub_key]() {
+  const QScopeGuard scopeguard_sub_key = qScopeGuard([&sub_key]() {
     if (sub_key) {
       RegCloseKey(sub_key);
     }

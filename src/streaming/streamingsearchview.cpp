@@ -189,7 +189,6 @@ void StreamingSearchView::Init(const StreamingServicePtr service, const SharedPt
   QObject::connect(ui_->radiobutton_search_albums, &QRadioButton::clicked, this, &StreamingSearchView::SearchAlbumsClicked);
   QObject::connect(ui_->radiobutton_search_songs, &QRadioButton::clicked, this, &StreamingSearchView::SearchSongsClicked);
   QObject::connect(group_by_actions_, &QActionGroup::triggered, this, &StreamingSearchView::GroupByClicked);
-  QObject::connect(group_by_actions_, &QActionGroup::triggered, this, &StreamingSearchView::GroupByClicked);
 
   QObject::connect(ui_->search, &SearchField::textChanged, this, &StreamingSearchView::TextEdited);
   QObject::connect(ui_->results, &AutoExpandingTreeView::AddToPlaylistSignal, this, &StreamingSearchView::AddToPlaylist);
@@ -363,6 +362,7 @@ void StreamingSearchView::timerEvent(QTimerEvent *e) {
 
   QMap<int, DelayedSearch>::const_iterator it = delayed_searches_.constFind(e->timerId());
   if (it != delayed_searches_.constEnd()) {
+    killTimer(e->timerId());  // startTimer() creates a repeating timer; stop it so it doesn't keep firing.
     SearchAsync(it.value().id_, it.value().query_, it.value().type_);
     delayed_searches_.erase(it);
     return;

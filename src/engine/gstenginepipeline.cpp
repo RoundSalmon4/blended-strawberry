@@ -159,6 +159,7 @@ GstEnginePipeline::GstEnginePipeline(QObject *parent)
       pipeline_connected_(false),
       pipeline_active_(false),
       buffering_(false),
+      current_state_(GST_STATE_NULL),
       pending_state_(GST_STATE_NULL),
       pending_seek_nanosec_(-1),
       pending_seek_ready_previous_state_(GST_STATE_NULL),
@@ -1396,7 +1397,8 @@ GstPadProbeReturn GstEnginePipeline::BufferProbeCallback(GstPad *pad, GstPadProb
       int16_t *s16 = static_cast<int16_t*>(g_malloc(static_cast<gsize>(buf16_size)));
       memset(s16, 0, static_cast<size_t>(buf16_size));
       for (int i = 0; i < (samples * channels); ++i) {
-        s16[i] = *(reinterpret_cast<int16_t*>(s24 + 1));
+        // Read the upper 16 bits of the little-endian 24-bit sample byte-wise to avoid an unaligned int16_t load.
+        s16[i] = static_cast<int16_t>(static_cast<uint16_t>(static_cast<uint8_t>(s24[1])) | (static_cast<uint16_t>(static_cast<uint8_t>(s24[2])) << 8));
         s24 += 3;
         if (s24 >= s24e) break;
       }
@@ -1419,7 +1421,8 @@ GstPadProbeReturn GstEnginePipeline::BufferProbeCallback(GstPad *pad, GstPadProb
       memset(s16, 0, static_cast<size_t>(buf16_size));
       for (int i = 0; i < (samples * channels); ++i) {
         int8_t *s24 = reinterpret_cast<int8_t*>(s32p);
-        s16[i] = *(reinterpret_cast<int16_t*>(s24 + 1));
+        // Read the upper 16 bits of the little-endian 24-bit sample byte-wise to avoid an unaligned int16_t load.
+        s16[i] = static_cast<int16_t>(static_cast<uint16_t>(static_cast<uint8_t>(s24[1])) | (static_cast<uint16_t>(static_cast<uint8_t>(s24[2])) << 8));
         ++s32p;
         if (s32p >= s32e) break;
       }
@@ -1807,6 +1810,9 @@ void GstEnginePipeline::StateChangedMessageReceived(GstMessage *msg) {
 
   qLog(Debug) << "Pipeline state changed from" << GstStateText(old_state) << "to" << GstStateText(new_state);
 
+  // Cache the pipeline's state so state() can answer without a blocking gst_element_get_state() call.
+  current_state_ = new_state;
+
   const bool pipeline_active = new_state == GST_STATE_PAUSED || new_state == GST_STATE_PLAYING;
   if (pipeline_active != pipeline_active_.load()) {
     pipeline_active_ = pipeline_active;
@@ -1914,12 +1920,12 @@ void GstEnginePipeline::BufferingMessageReceived(GstMessage *msg) {
 
 GstState GstEnginePipeline::state() const {
 
-  GstState s = GST_STATE_NULL, sp = GST_STATE_NULL;
-  if (!pipeline_ || gst_element_get_state(pipeline_, &s, &sp, kGstStateTimeoutNanosecs) == GST_STATE_CHANGE_FAILURE) {
-    return GST_STATE_NULL;
-  }
+  // Return the cached state observed from GST_MESSAGE_STATE_CHANGED instead of calling the blocking gst_element_get_state(),
+  // which would stall the calling thread (e.g. the GUI thread via AnalyzerBase::paintEvent) for up to kGstStateTimeoutNanosecs while the pipeline is mid state-change.
+  // Callers already tolerate a momentarily stale value (see EngineBase).
+  if (!pipeline_) return GST_STATE_NULL;
 
-  return s;
+  return current_state_.load();
 
 }
 
@@ -2297,7 +2303,7 @@ void GstEnginePipeline::SetFaderVolume(const qreal volume) {
 
 void GstEnginePipeline::ResumeFaderAsync() {
 
-  if (fader_active_.load() && !fader_running_.load()) {
+  if (fader_ && fader_active_.load() && !fader_running_.load()) {
     QMetaObject::invokeMethod(&*fader_, &QTimeLine::resume, Qt::QueuedConnection);
   }
 
@@ -2330,7 +2336,7 @@ void GstEnginePipeline::FaderTimelineTimeout() {
 
   qLog(Debug) << "Pipeline" << id() << "fading timed out";
 
-  if (volume_fading_) {
+  if (volume_fading_ && fader_) {
     qLog(Debug) << "Pipeline" << id() << "setting volume" << (fader_->direction() == QTimeLine::Direction::Forward ? 1.0 : 0.0);
     g_object_set(G_OBJECT(volume_fading_), "volume", fader_->direction() == QTimeLine::Direction::Forward ? 1.0 : 0.0, nullptr);
   }
