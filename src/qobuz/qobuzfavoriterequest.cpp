@@ -46,9 +46,10 @@ QString QobuzFavoriteRequest::FavoriteText(const FavoriteType type) {
     case FavoriteType::Albums:
       return u"albums"_s;
     case FavoriteType::Songs:
-    default:
       return u"tracks"_s;
   }
+
+  return QString();
 
 }
 
@@ -132,6 +133,7 @@ void QobuzFavoriteRequest::AddFavoritesReply(QNetworkReply *reply, const Favorit
 
   if (replies_.contains(reply)) {
     replies_.removeAll(reply);
+    QObject::disconnect(reply, nullptr, this, nullptr);
     reply->deleteLater();
   }
   else {
@@ -222,6 +224,7 @@ void QobuzFavoriteRequest::RemoveFavoritesReply(QNetworkReply *reply, const Favo
 
   if (replies_.contains(reply)) {
     replies_.removeAll(reply);
+    QObject::disconnect(reply, nullptr, this, nullptr);
     reply->deleteLater();
   }
   else {
