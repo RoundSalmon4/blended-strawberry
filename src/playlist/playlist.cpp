@@ -631,7 +631,7 @@ int Playlist::PreviousVirtualIndex(int i, const bool ignore_repeat_track) const 
       continue;
     }
     Song this_song = item_at(virtual_items_[j])->EffectiveMetadata();
-    if (((last_song.is_compilation() && this_song.is_compilation()) || last_song.artist() == this_song.artist()) && last_song.album() == this_song.album() && FilterContainsVirtualIndex(j)) {
+    if (((last_song.is_compilation() && this_song.is_compilation()) || last_song.effective_albumartist() == this_song.effective_albumartist()) && last_song.album() == this_song.album() && FilterContainsVirtualIndex(j)) {
       return j;  // Found one
     }
   }
@@ -2022,14 +2022,16 @@ void Playlist::Shuffle() {
 
   int begin = 0;
   if (current_item_index_.isValid()) {
-    if (new_items[0] != new_items[current_item_index_.row()]) {
-      std::swap(new_items[0], new_items[current_item_index_.row()]);
+    if (dynamic_playlist_) {
+      // Keep the history and the current track fixed; only shuffle the future region (mirrors sort()).
+      begin = current_item_index_.row() + 1;
     }
-    begin = 1;
-  }
-
-  if (dynamic_playlist_ && current_item_index_.isValid()) {
-    begin += current_item_index_.row() + 1;
+    else {
+      if (new_items[0] != new_items[current_item_index_.row()]) {
+        std::swap(new_items[0], new_items[current_item_index_.row()]);
+      }
+      begin = 1;
+    }
   }
 
   const int count = static_cast<int>(items_.count());

@@ -1203,7 +1203,7 @@ void MainWindow::ReloadSettings() {
   if (playing_widget_ != ui_->widget_playing->IsEnabled()) TabSwitched();
   doubleclick_addmode_ = static_cast<BehaviourSettings::AddBehaviour>(s.value(BehaviourSettings::kDoubleClickAddMode, static_cast<int>(BehaviourSettings::AddBehaviour::Append)).toInt());
   doubleclick_playmode_ = static_cast<BehaviourSettings::PlayBehaviour>(s.value(BehaviourSettings::kDoubleClickPlayMode, static_cast<int>(BehaviourSettings::PlayBehaviour::Never)).toInt());
-  doubleclick_playlist_addmode_ = static_cast<BehaviourSettings::PlaylistAddBehaviour>(s.value(BehaviourSettings::kDoubleClickPlaylistAddMode, static_cast<int>(BehaviourSettings::PlayBehaviour::Never)).toInt());
+  doubleclick_playlist_addmode_ = static_cast<BehaviourSettings::PlaylistAddBehaviour>(s.value(BehaviourSettings::kDoubleClickPlaylistAddMode, static_cast<int>(BehaviourSettings::PlaylistAddBehaviour::Play)).toInt());
   menu_playmode_ = static_cast<BehaviourSettings::PlayBehaviour>(s.value(BehaviourSettings::kMenuPlayMode, static_cast<int>(BehaviourSettings::PlayBehaviour::Never)).toInt());
   s.endGroup();
 
@@ -1791,8 +1791,12 @@ void MainWindow::FilePathChanged(const QString &path) {
 
 void MainWindow::Seeked(const qint64 microseconds) {
 
+  PlaylistItemPtr item = app_->player()->GetCurrentItem();
+  if (!item) return;
+
   const qint64 position = microseconds / kUsecPerSec;
-  const qint64 length = app_->player()->GetCurrentItem()->EffectiveMetadata().length_nanosec() / kNsecPerSec;
+  const qint64 length = item->EffectiveMetadata().length_nanosec() / kNsecPerSec;
+  if (length <= 0) return;
   systemtrayicon_->SetProgress(static_cast<int>(static_cast<double>(position) / static_cast<double>(length) * 100.0));
 
 #ifdef HAVE_DBUS
@@ -1836,8 +1840,6 @@ void MainWindow::UpdateTrackPosition() {
 }
 
 void MainWindow::UpdateTrackSliderPosition() {
-
-  PlaylistItemPtr item(app_->player()->GetCurrentItem());
 
   const int slider_position = std::floor(static_cast<float>(app_->player()->engine()->position_nanosec()) / kNsecPerMsec);
   const int slider_length = static_cast<int>(app_->player()->engine()->length_nanosec() / kNsecPerMsec);

@@ -1381,7 +1381,8 @@ GstPadProbeReturn GstEnginePipeline::BufferProbeCallback(GstPad *pad, GstPadProb
       int16_t *d = static_cast<int16_t*>(g_malloc(static_cast<gsize>(buf16_size)));
       memset(d, 0, static_cast<size_t>(buf16_size));
       for (int i = 0; i < (samples * channels); ++i) {
-        float sample_float = (s[i] * static_cast<float>(32768.0));
+        // Clamp before casting - samples can exceed [-1.0, 1.0) (ReplayGain/intersample peaks, and this probe is pre-volume/pre-EQ), which would otherwise wrap on the int16 cast.
+        const float sample_float = qBound(-32768.0F, s[i] * 32768.0F, 32767.0F);
         d[i] = static_cast<int16_t>(sample_float);
       }
       gst_buffer_unmap(buf, &map_info);
@@ -1693,8 +1694,10 @@ void GstEnginePipeline::ErrorMessageReceived(GstMessage *msg) {
     // But there is no message send to the bus when the current track finishes, we have to add an EOS ourself.
     qLog(Info) << "Ignoring error" << domain << code << message << debugstr << "when loading next track";
     GstPad *pad = gst_element_get_static_pad(audiobin_, "sink");
-    gst_pad_send_event(pad, gst_event_new_eos());
-    gst_object_unref(pad);
+    if (pad) {
+      gst_pad_send_event(pad, gst_event_new_eos());
+      gst_object_unref(pad);
+    }
     return;
   }
 
