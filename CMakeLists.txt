@@ -153,6 +153,16 @@ endif()
 
 find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
+
+# Detect whether the MinGW GCC toolchain uses the posix (winpthreads) threading model.
+# This is reported by "gcc -v" as "Thread model: posix" (as opposed to "win32").
+if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  execute_process(COMMAND ${CMAKE_CXX_COMPILER} -v OUTPUT_QUIET ERROR_VARIABLE GCC_VERBOSE_OUTPUT)
+  if(GCC_VERBOSE_OUTPUT MATCHES "Thread model: posix")
+    set(HAVE_WINPTHREADS ON)
+  endif()
+endif()
+
 find_package(Backtrace)
 if(Backtrace_FOUND)
   set(HAVE_BACKTRACE ON)
@@ -440,7 +450,6 @@ set(SOURCES
   src/core/threadsafenetworkdiskcache.cpp
   src/core/networktimeouts.cpp
   src/core/networkproxyfactory.cpp
-  src/core/qtfslistener.cpp
   src/core/settings.cpp
   src/core/settingsprovider.cpp
   src/core/signalchecker.cpp
@@ -849,7 +858,6 @@ set(HEADERS
   src/core/networkaccessmanager.h
   src/core/threadsafenetworkdiskcache.h
   src/core/networktimeouts.h
-  src/core/qtfslistener.h
   src/core/settings.h
   src/core/songloader.h
   src/core/taskmanager.h
@@ -1218,6 +1226,17 @@ set(UI
 
 if(UNIX)
   optional_source(UNIX SOURCES src/core/unixsignalwatcher.cpp HEADERS src/core/unixsignalwatcher.h)
+endif()
+
+if(LINUX)
+  list(APPEND SOURCES src/core/filesystemwatcherinotify.cpp)
+  list(APPEND HEADERS src/core/filesystemwatcherinotify.h)
+elseif(WIN32)
+  list(APPEND SOURCES src/core/filesystemwatcherwin.cpp src/core/filesystemwatcherwinthread.cpp)
+  list(APPEND HEADERS src/core/filesystemwatcherwin.h src/core/filesystemwatcherwinthread.h)
+else()
+  list(APPEND SOURCES src/core/filesystemwatcherqt.cpp)
+  list(APPEND HEADERS src/core/filesystemwatcherqt.h)
 endif()
 
 if(APPLE)

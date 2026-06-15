@@ -17,27 +17,37 @@
  *
  */
 
-#ifndef FILESYSTEMWATCHERINTERFACE_H
-#define FILESYSTEMWATCHERINTERFACE_H
+#ifndef FILESYSTEMWATCHERINOTIFY_H
+#define FILESYSTEMWATCHERINOTIFY_H
 
-#include <QObject>
+#include <QMap>
 #include <QString>
 #include <QStringList>
+#include <QSocketNotifier>
 
-class FileSystemWatcherInterface : public QObject {
+#include "filesystemwatcherinterface.h"
+
+class FileSystemWatcherInotify : public FileSystemWatcherInterface {
   Q_OBJECT
 
  public:
-  explicit FileSystemWatcherInterface(QObject *parent = nullptr);
+  explicit FileSystemWatcherInotify(QObject *parent = nullptr);
+  ~FileSystemWatcherInotify();
 
-  virtual void AddPaths(const QStringList &paths) = 0;
-  virtual void RemovePaths(const QStringList &paths) = 0;
-  virtual void AddPath(const QString &path) = 0;
-  virtual void RemovePath(const QString &path) = 0;
-  virtual void Clear() = 0;
+  void AddPaths(const QStringList &paths) override;
+  void RemovePaths(const QStringList &paths) override;
+  void AddPath(const QString &path) override;
+  void RemovePath(const QString &path) override;
+  void Clear() override;
 
- Q_SIGNALS:
-  void PathChanged(const QString &path);
+ private Q_SLOTS:
+  void InotifyRead();
+
+ private:
+  int inotify_fd_;
+  QSocketNotifier *socket_notifier_;
+  QMap<QString, int> wd_from_path_;
+  QMap<int, QString> path_from_wd_;
 };
 
-#endif  // FILESYSTEMWATCHERINTERFACE_H
+#endif  // FILESYSTEMWATCHERINOTIFY_H
