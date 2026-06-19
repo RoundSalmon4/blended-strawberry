@@ -1,8 +1,6 @@
 /*
  * Strawberry Music Player
- * This file was part of Clementine.
- * Copyright 2012, David Sansome <me@davidsansome.com>
- * Copyright 2019-2025, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2026, Strawberry contributors
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,32 +23,32 @@
 
 #include "includes/shared_ptr.h"
 #include "core/song.h"
+#include "core/playerinterface.h"
 #include "core/settings.h"
-#include "core/player.h"
 #include "engine/enginebase.h"
 #include "constants/seekbarsettings.h"
 
-#include "moodbarcontroller.h"
-#include "moodbarloader.h"
-#include "moodbarpipeline.h"
+#include "waveformcontroller.h"
+#include "waveform/waveformloader.h"
+#include "waveform/waveformpipeline.h"
 
 using std::make_shared;
 
-MoodbarController::MoodbarController(const SharedPtr<Player> player, const SharedPtr<MoodbarLoader> moodbar_loader, QObject *parent)
+WaveformController::WaveformController(const SharedPtr<PlayerInterface> player, const SharedPtr<WaveformLoader> waveform_loader, QObject *parent)
     : QObject(parent),
       player_(player),
-      moodbar_loader_(moodbar_loader),
+      waveform_loader_(waveform_loader),
       enabled_(false) {
 
   ReloadSettings();
 
 }
 
-void MoodbarController::ReloadSettings() {
+void WaveformController::ReloadSettings() {
 
   Settings s;
   s.beginGroup(SeekbarSettings::kSettingsGroup);
-  const bool enabled = static_cast<SeekbarSettings::Mode>(s.value(QLatin1String(SeekbarSettings::kMode), static_cast<int>(SeekbarSettings::Mode::Normal)).toInt()) == SeekbarSettings::Mode::Moodbar;
+  const bool enabled = static_cast<SeekbarSettings::Mode>(s.value(QLatin1String(SeekbarSettings::kMode), static_cast<int>(SeekbarSettings::Mode::Normal)).toInt()) == SeekbarSettings::Mode::Waveform;
   s.endGroup();
 
   const bool was_enabled = enabled_;
@@ -60,7 +58,18 @@ void MoodbarController::ReloadSettings() {
 
 }
 
-void MoodbarController::SetEnabled(const bool enabled) {
+void WaveformController::CurrentSongChanged(const Song &song) {
+
+  // Track the playing song even while disabled so enabling mid-track can generate the waveform for it without waiting for the next song change.
+  current_song_ = song;
+
+  if (!enabled_) return;
+
+  GenerateWaveform(song);
+
+}
+
+void WaveformController::SetEnabled(const bool enabled) {
 
   if (enabled == enabled_) return;
 
@@ -71,53 +80,42 @@ void MoodbarController::SetEnabled(const bool enabled) {
 
 }
 
-void MoodbarController::ApplyEnabledTransition(const bool was_enabled) {
+void WaveformController::ApplyEnabledTransition(const bool was_enabled) {
 
   if (enabled_ && !was_enabled) {
     // Enabling mid-track: generate for whatever song is currently playing.
     if (!current_song_.url().isEmpty()) {
-      GenerateMoodbar(current_song_);
+      GenerateWaveform(current_song_);
     }
   }
   else if (!enabled_ && was_enabled) {
     // Disabling reverts the seekbar to a normal slider and stops generation.
-    Q_EMIT CurrentMoodbarDataChanged();
+    Q_EMIT CurrentWaveformDataChanged();
   }
 
 }
 
-void MoodbarController::CurrentSongChanged(const Song &song) {
+void WaveformController::GenerateWaveform(const Song &song) {
 
-  // Track the playing song even while disabled so enabling mid-track can generate the moodbar for it without waiting for the next song change.
-  current_song_ = song;
-
-  if (!enabled_) return;
-
-  GenerateMoodbar(song);
-
-}
-
-void MoodbarController::GenerateMoodbar(const Song &song) {
-
-  const MoodbarLoader::LoadResult load_result = moodbar_loader_->Load(song.url(), song.has_cue());
+  const WaveformLoader::LoadResult load_result = waveform_loader_->Load(song.url(), song.has_cue());
   switch (load_result.status) {
-    case MoodbarLoader::LoadStatus::CannotLoad:
-      Q_EMIT CurrentMoodbarDataChanged();
+    case WaveformLoader::LoadStatus::CannotLoad:
+      Q_EMIT CurrentWaveformDataChanged();
       break;
 
-    case MoodbarLoader::LoadStatus::Loaded:
-      Q_EMIT CurrentMoodbarDataChanged(load_result.data);
+    case WaveformLoader::LoadStatus::Loaded:
+      Q_EMIT CurrentWaveformDataChanged(load_result.data);
       break;
 
-    case MoodbarLoader::LoadStatus::WillLoadAsync:
-      // Emit an empty array for now so the GUI reverts to a normal progressbar.  Our slot will be called when the data is actually loaded.
-      Q_EMIT CurrentMoodbarDataChanged();
+    case WaveformLoader::LoadStatus::WillLoadAsync:
+      // Emit an empty array for now so the seekbar reverts to a normal slider.  Our slot will be called when the data is actually loaded.
+      Q_EMIT CurrentWaveformDataChanged();
 
-      MoodbarPipelinePtr pipeline = load_result.pipeline;
+      WaveformPipelinePtr pipeline = load_result.pipeline;
       Q_ASSERT(pipeline);
       const QUrl url = song.url();
       SharedPtr<QMetaObject::Connection> connection = make_shared<QMetaObject::Connection>();
-      *connection = QObject::connect(&*pipeline, &MoodbarPipeline::Finished, this, [this, connection, pipeline, url]() {
+      *connection = QObject::connect(&*pipeline, &WaveformPipeline::Finished, this, [this, connection, pipeline, url]() {
         AsyncLoadComplete(pipeline, url);
         QObject::disconnect(*connection);
       });
@@ -126,23 +124,23 @@ void MoodbarController::GenerateMoodbar(const Song &song) {
 
 }
 
-void MoodbarController::PlaybackStopped() {
+void WaveformController::PlaybackStopped() {
 
   current_song_ = Song();
 
   if (enabled_) {
-    Q_EMIT CurrentMoodbarDataChanged();
+    Q_EMIT CurrentWaveformDataChanged();
   }
 
 }
 
-void MoodbarController::AsyncLoadComplete(MoodbarPipelinePtr pipeline, const QUrl &url) {
+void WaveformController::AsyncLoadComplete(WaveformPipelinePtr pipeline, const QUrl &url) {
 
-  // If the seekbar mode changed while the pipeline was in flight, suppress the emission — the seekbar should stay plain.
+  // If settings were changed while the pipeline was in flight, suppress the emission — the user disabled the waveform and the seekbar should stay plain.
   if (!enabled_) return;
 
   // Is this song still playing?
-  PlaylistItemPtr current_item = player_->GetCurrentItem();
+  const PlaylistItemPtr current_item = player_->GetCurrentItem();
   if (!current_item || current_item->OriginalUrl() != url) {
     return;
   }
@@ -157,6 +155,6 @@ void MoodbarController::AsyncLoadComplete(MoodbarPipelinePtr pipeline, const QUr
       break;
   }
 
-  Q_EMIT CurrentMoodbarDataChanged(pipeline->data());
+  Q_EMIT CurrentWaveformDataChanged(pipeline->data());
 
 }
