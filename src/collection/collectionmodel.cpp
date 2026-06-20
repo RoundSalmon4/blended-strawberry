@@ -338,9 +338,6 @@ QVariant CollectionModel::data(CollectionItem *item, const int role) const {
     case Role_ContainerKey:
       return item->container_key;
 
-    case Role_Artist:
-      return item->metadata.artist();
-
     case Role_Editable:{
       if (item->type == CollectionItem::Type::Container) {
         // If we have even one non editable item as a child, we ourselves are not available for edit
@@ -526,13 +523,13 @@ void CollectionModel::ProcessUpdate() {
 
 CollectionModel::ItemIdentity CollectionModel::CaptureItemIdentity(const QModelIndex &idx) const {
 
-  ItemIdentity identity;
+  if (!idx.isValid()) return ItemIdentity();
 
   CollectionItem *item = IndexToItem(idx);
-  if (!item || !item->parent) return identity;
+  if (!item || !item->parent) return ItemIdentity();
 
+  ItemIdentity identity;
   identity.type = item->type;
-
   switch (item->type) {
     case CollectionItem::Type::Song:
       identity.song_id = item->metadata.id();
@@ -566,6 +563,7 @@ QModelIndex CollectionModel::ResolveItemIdentity(const ItemIdentity &identity) c
 
   switch (identity.type) {
     case CollectionItem::Type::Song:
+      if (!song_nodes_.contains(identity.song_id)) return QModelIndex();
       return ItemToIndex(song_nodes_.value(identity.song_id));
     case CollectionItem::Type::Container:
       if (identity.compilation_artist) {
@@ -573,9 +571,10 @@ QModelIndex CollectionModel::ResolveItemIdentity(const ItemIdentity &identity) c
         CollectionItem *new_parent = identity.compilation_artist_parent_is_root ? root_ : (identity.container_level >= 0 && identity.container_level <= 2 ? container_nodes_[identity.container_level].value(identity.container_key) : nullptr);
         return new_parent ? ItemToIndex(new_parent->compilation_artist_node_) : QModelIndex();
       }
-      if (identity.container_level < 0 || identity.container_level > 2) return QModelIndex();
+      if (identity.container_level < 0 || identity.container_level > 2 || !container_nodes_[identity.container_level].contains(identity.container_key)) return QModelIndex();
       return ItemToIndex(container_nodes_[identity.container_level].value(identity.container_key));
     case CollectionItem::Type::Divider:
+      if (!divider_nodes_.contains(identity.container_key)) return QModelIndex();
       return ItemToIndex(divider_nodes_.value(identity.container_key));
     default:
       return QModelIndex();
@@ -784,15 +783,12 @@ void CollectionModel::RemoveSongsInternal(const SongList &songs) {
   QSet<CollectionItem*> parents;
   for (const Song &song : songs) {
     if (!song_nodes_.contains(song.id())) continue;
-    CollectionItem *node = song_nodes_.value(song.id());
+    CollectionItem *node = song_nodes_.take(song.id());
     nodes_by_parent[node->parent] << node;
     if (node->parent != root_) parents << node->parent;
   }
 
   for (auto it = nodes_by_parent.cbegin(); it != nodes_by_parent.cend(); ++it) {
-    for (CollectionItem *node : it.value()) {
-      song_nodes_.remove(node->metadata.id());
-    }
     RemoveSiblingNodes(it.key(), it.value());
   }
 
@@ -803,7 +799,7 @@ void CollectionModel::RemoveSongsInternal(const SongList &songs) {
     QHash<CollectionItem*, QList<CollectionItem*>> empty_by_grandparent;
     // Since we are going to remove elements from the container, we need a copy to iterate over.
     // If we iterate over the original, the behavior will be undefined.
-    QSet<CollectionItem*> parents_copy = parents;
+    const QSet<CollectionItem*> parents_copy = parents;
     for (CollectionItem *node : parents_copy) {
       parents.remove(node);
       if (node->children.count() != 0) continue;
@@ -811,9 +807,10 @@ void CollectionModel::RemoveSongsInternal(const SongList &songs) {
       // Consider its parent for the next round
       if (node->parent != root_) parents << node->parent;
 
-      // Maybe consider its divider node
-      if (node->container_level == 0) {
-        divider_keys << DividerKey(options_active_.group_by[0], node->metadata, node->sort_text);
+      // Maybe consider its divider node.
+      // Use the key captured at creation: a container's own metadata is never populated, so recomputing DividerKey here would be wrong for group-bys that derive the key from song fields (e.g. year/samplerate), leaving the divider orphaned.
+      if (node->container_level == 0 && !node->divider_key.isEmpty()) {
+        divider_keys << node->divider_key;
       }
 
       // Special case the Various Artists node
@@ -840,7 +837,7 @@ void CollectionModel::RemoveSongsInternal(const SongList &songs) {
     if (!divider_nodes_.contains(divider_key)) continue;
 
     // Look to see if there are any other items still under this divider
-    if (std::any_of(container_nodes_[0].cbegin(), container_nodes_[0].cend(), [this, divider_key](CollectionItem *node) { return DividerKey(options_active_.group_by[0], node->metadata, node->sort_text) == divider_key; })) {
+    if (std::any_of(container_nodes_[0].cbegin(), container_nodes_[0].cend(), [divider_key](CollectionItem *node) { return node->divider_key == divider_key; })) {
       continue;
     }
 
@@ -907,6 +904,7 @@ CollectionItem *CollectionModel::CreateContainerItem(const GroupBy group_by, con
   if (!divider_key.isEmpty()) {
     item->sort_text.prepend(divider_key + QLatin1Char(' '));
   }
+  item->divider_key = divider_key;
 
   container_nodes_[container_level].insert(item->container_key, item);
 
@@ -1741,38 +1739,6 @@ void CollectionModel::ClearIconDiskCache() {
 
   if (icon_disk_cache_) icon_disk_cache_->clear();
   QPixmapCache::clear();
-
-}
-
-void CollectionModel::RowsInserted(const QModelIndex &parent, const int first, const int last) {
-
-  SongList songs;
-  for (int i = first; i <= last; i++) {
-    const QModelIndex idx = index(i, 0, parent);
-    if (!idx.isValid()) continue;
-    CollectionItem *item = IndexToItem(idx);
-    if (!item || item->type != CollectionItem::Type::Song) continue;
-    songs << item->metadata;
-  }
-
-  if (!songs.isEmpty()) {
-    Q_EMIT SongsAdded(songs);
-  }
-
-}
-
-void CollectionModel::RowsRemoved(const QModelIndex &parent, const int first, const int last) {
-
-  SongList songs;
-  for (int i = first; i <= last; i++) {
-    const QModelIndex idx = index(i, 0, parent);
-    if (!idx.isValid()) continue;
-    CollectionItem *item = IndexToItem(idx);
-    if (!item || item->type != CollectionItem::Type::Song) continue;
-    songs << item->metadata;
-  }
-
-  Q_EMIT SongsRemoved(songs);
 
 }
 

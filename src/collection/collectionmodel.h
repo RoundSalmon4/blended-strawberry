@@ -75,7 +75,6 @@ class CollectionModel : public SimpleTreeModel<CollectionItem> {
     Role_ContainerType,
     Role_SortText,
     Role_ContainerKey,
-    Role_Artist,
     Role_IsDivider,
     Role_Editable,
     LastRole
@@ -214,8 +213,6 @@ class CollectionModel : public SimpleTreeModel<CollectionItem> {
   void TotalArtistCountUpdated(const int count);
   void TotalAlbumCountUpdated(const int count);
   void GroupingChanged(const CollectionModel::Grouping g, const bool separate_albums_by_grouping);
-  void SongsAdded(const SongList &songs);
-  void SongsRemoved(const SongList &songs);
 
  public Q_SLOTS:
   void SetFilterMode(const CollectionFilterOptions::FilterMode filter_mode);
@@ -291,9 +288,6 @@ class CollectionModel : public SimpleTreeModel<CollectionItem> {
   void TotalSongCountUpdatedSlot(const int count);
   void TotalArtistCountUpdatedSlot(const int count);
   void TotalAlbumCountUpdatedSlot(const int count);
-
-  void RowsInserted(const QModelIndex &parent, const int first, const int last);
-  void RowsRemoved(const QModelIndex &parent, const int first, const int last);
 
  private:
   const SharedPtr<CollectionBackend> backend_;
