@@ -710,7 +710,15 @@ jobs:
 
           if [ -z "$release_notes" ]; then
               echo "No release notes found for version $version. Adding default message."
-              release_notes="Changes:\n"
+              release_notes="Changes:"
+          else
+              # If no known section header exists, insert "Changes:" after the version line
+              # (preserves indentation, matching the 1.2.18 release format)
+              if ! echo "$release_notes" | grep -qiE '^[[:space:]]*(Bugfixes:|Enhancements:|Other:|Changes:)' ; then
+                  version_line=$(echo "$release_notes" | head -n 1)
+                  body=$(echo "$release_notes" | tail -n +3)
+                  release_notes="${version_line}\n\nChanges:${body}"
+              fi
           fi
 
           while IFS= read -r i; do
