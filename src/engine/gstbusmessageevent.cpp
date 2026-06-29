@@ -1,6 +1,6 @@
 /*
  * Strawberry Music Player
- * Copyright 2018-2024, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2026, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,11 +17,22 @@
  *
  */
 
-#include "filterparserfloateqcomparator.h"
+#include "config.h"
 
-FilterParserFloatEqComparator::FilterParserFloatEqComparator(const float search_term) : search_term_(search_term) {}
+#include <gst/gst.h>
 
-bool FilterParserFloatEqComparator::Matches(const QVariant &value) const {
-  // Quantize both sides (CAST((x + 0.05) * 10 AS INTEGER)) so the in-memory and database rating filters agree, instead of relying on fragile exact float equality.
-  return static_cast<int>((value.toFloat() + 0.05F) * 10.0F) == static_cast<int>((search_term_ + 0.05F) * 10.0F);
+#include <QEvent>
+
+#include "gstbusmessageevent.h"
+
+QEvent::Type GstBusMessageEvent::EventType() {
+
+  // C++ guarantees this is initialised once, so the event type is registered a single time and shared across all instances.
+  static const QEvent::Type type = static_cast<QEvent::Type>(QEvent::registerEventType());
+  return type;
+
 }
+
+GstBusMessageEvent::GstBusMessageEvent(GstMessage *message, const quint64 generation) : QEvent(EventType()), message_(gst_message_ref(message)), generation_(generation) {}
+
+GstBusMessageEvent::~GstBusMessageEvent() { gst_message_unref(message_); }
