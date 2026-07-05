@@ -2,6 +2,17 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="sv_SE" sourcelanguage="en-US">
   <context>
+    <name>ASXParser</name>
+    <message>
+      <source>ASX playlist is too large</source>
+      <translation type="unfinished">ASX playlist is too large</translation>
+    </message>
+    <message>
+      <source>Failed to write ASX playlist</source>
+      <translation type="unfinished">Failed to write ASX playlist</translation>
+    </message>
+  </context>
+  <context>
     <name>About</name>
     <message>
       <source>About</source>
@@ -513,12 +524,88 @@
       <translation>Välj färg för spelad låt i spellistan:</translation>
     </message>
     <message>
+      <source>Window</source>
+      <translation type="unfinished">Window</translation>
+    </message>
+    <message>
+      <source>Window text</source>
+      <translation type="unfinished">Window text</translation>
+    </message>
+    <message>
+      <source>Base</source>
+      <translation type="unfinished">Base</translation>
+    </message>
+    <message>
+      <source>Alternate base</source>
+      <translation type="unfinished">Alternate base</translation>
+    </message>
+    <message>
+      <source>Tooltip base</source>
+      <translation type="unfinished">Tooltip base</translation>
+    </message>
+    <message>
+      <source>Tooltip text</source>
+      <translation type="unfinished">Tooltip text</translation>
+    </message>
+    <message>
+      <source>Placeholder text</source>
+      <translation type="unfinished">Placeholder text</translation>
+    </message>
+    <message>
+      <source>Text</source>
+      <translation type="unfinished">Text</translation>
+    </message>
+    <message>
+      <source>Button</source>
+      <translation type="unfinished">Button</translation>
+    </message>
+    <message>
+      <source>Button text</source>
+      <translation type="unfinished">Button text</translation>
+    </message>
+    <message>
+      <source>Bright text</source>
+      <translation type="unfinished">Bright text</translation>
+    </message>
+    <message>
+      <source>Select color</source>
+      <translation type="unfinished">Select color</translation>
+    </message>
+    <message>
       <source>Select background image</source>
       <translation>Väl en bakgrundsbild</translation>
     </message>
     <message>
       <source>You need to restart Strawberry for this setting to take affect.</source>
       <translation>Du måste starta om Strawberry för att den här inställningen ska börja gälla.</translation>
+    </message>
+    <message>
+      <source>Colors</source>
+      <translation type="unfinished">Colors</translation>
+    </message>
+    <message>
+      <source>&amp;Use the system default color set</source>
+      <translation type="unfinished">&amp;Use the system default color set</translation>
+    </message>
+    <message>
+      <source>Use a custom color set</source>
+      <translation type="unfinished">Use a custom color set</translation>
+    </message>
+    <message>
+      <source>Set a custom color set suitable for a dark theme</source>
+      <translation type="unfinished">Set a custom color set suitable for a dark theme</translation>
+    </message>
+    <message>
+      <source>Dark mode</source>
+      <translation type="unfinished">Dark mode</translation>
+    </message>
+    <message>
+      <source>Reset the custom color set to the system default colors</source>
+      <translation type="unfinished">Reset the custom color set to the system default colors</translation>
+    </message>
+    <message>
+      <source>Reset to default</source>
+      <translation type="unfinished">Reset to default</translation>
     </message>
   </context>
   <context>
@@ -706,6 +793,14 @@
     <message>
       <source>Exponential volume scaling</source>
       <translation>Exponentiell volymskalning</translation>
+    </message>
+    <message>
+      <source>Device warm-up</source>
+      <translation type="unfinished">Device warm-up</translation>
+    </message>
+    <message>
+      <source>Delay between opening the audio device and starting playback, to avoid the start of the track being cut off while the device (DAC) is still becoming ready.  Set to 0 to disable.</source>
+      <translation type="unfinished">Delay between opening the audio device and starting playback, to avoid the start of the track being cut off while the device (DAC) is still becoming ready.  Set to 0 to disable.</translation>
     </message>
   </context>
   <context>
@@ -3027,76 +3122,6 @@ Om det inte finns några träffar används den största bilden i mappen.</transl
     </message>
   </context>
   <context>
-    <name>LastFMImport</name>
-    <message>
-      <source>Missing username, please login to last.fm first!</source>
-      <translation>Användarnamn saknas, logga in på last.fm först!</translation>
-    </message>
-  </context>
-  <context>
-    <name>LastFMImportDialog</name>
-    <message>
-      <source>Import data from last.fm</source>
-      <translation>Importera data från last.fm</translation>
-    </message>
-    <message>
-      <source>Choose data to import from last.fm</source>
-      <translation>Välj data att importera från last.fm</translation>
-    </message>
-    <message>
-      <source>Last played</source>
-      <translation>Senast spelad</translation>
-    </message>
-    <message>
-      <source>Play counts</source>
-      <translation>Antal spelningar</translation>
-    </message>
-    <message>
-      <source>Warning: Play counts and last played from last.fm will completely replace the same data for the matched songs. Play counts will replace the data based on artist and song title for the same albums! Please backup your database before you start.</source>
-      <translation>Varning: antal spelningar och senast spelad-data från last.fm ersätter samma data för matchade låtar. Antal spelningar ersätts baserat på artist och låttitel för samma album. Säkerhetskopiera databasen innan du börjar.</translation>
-    </message>
-    <message>
-      <source>Go!</source>
-      <translation>Starta!</translation>
-    </message>
-    <message>
-      <source>Close</source>
-      <translation>Stäng</translation>
-    </message>
-    <message>
-      <source>Cancel</source>
-      <translation>Avbryt</translation>
-    </message>
-    <message>
-      <source>Receiving initial data from last.fm...</source>
-      <translation>Tar emot initiala data från last.fm…</translation>
-    </message>
-    <message>
-      <source>Receiving playcount for %1 songs and last played for %2 songs.</source>
-      <translation>Tar emot antal spelningar för %1 låtar och senast spelad-data för %2 låtar.</translation>
-    </message>
-    <message>
-      <source>Receiving last played for %1 songs.</source>
-      <translation>Tar emot senaste spelning för %1 låtar.</translation>
-    </message>
-    <message>
-      <source>Receiving playcounts for %1 songs.</source>
-      <translation>Tar emot antal spelningar för %1 låtar.</translation>
-    </message>
-    <message>
-      <source>Playcounts for %1 songs and last played for %2 songs received.</source>
-      <translation>Antal spelningar för %1 låtar och senast spelad-data för %2 låtar har tagits emot.</translation>
-    </message>
-    <message>
-      <source>Last played for %1 songs received.</source>
-      <translation>Senaste spelning för %1 låtar har tagits emot.</translation>
-    </message>
-    <message>
-      <source>Playcounts for %1 songs received.</source>
-      <translation>Antal spelningar för %1 låtar har tagits emot.</translation>
-    </message>
-  </context>
-  <context>
     <name>LastFMScrobbler</name>
     <message>
       <source>%1 Scrobbler Authentication</source>
@@ -3515,10 +3540,6 @@ Om det inte finns några träffar används den största bilden i mappen.</transl
     <message>
       <source>Show sidebar</source>
       <translation>Visa sidofält</translation>
-    </message>
-    <message>
-      <source>Import data from last.fm...</source>
-      <translation>Importera data från last.fm…</translation>
     </message>
     <message>
       <source>Context</source>
@@ -7942,6 +7963,13 @@ Are you sure you want to continue?</source>
     <message>
       <source>Save the .waveform files directly in the songs folders</source>
       <translation>Spara .waveform-filerna direkt i låtmapparna</translation>
+    </message>
+  </context>
+  <context>
+    <name>XSPFParser</name>
+    <message>
+      <source>Failed to write XSPF playlist</source>
+      <translation type="unfinished">Failed to write XSPF playlist</translation>
     </message>
   </context>
 </TS>

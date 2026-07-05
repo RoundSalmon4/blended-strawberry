@@ -52,6 +52,9 @@ class FancyTabWidget : public QTabWidget {
     IconsSidebar,
   };
 
+  static const char *kTabMode;
+  static const char *kCurrentTab;
+
   Mode mode() const { return mode_; }
   int iconsize_smallsidebar() const { return iconsize_smallsidebar_; }
   int iconsize_largesidebar() const { return iconsize_largesidebar_; }
@@ -76,7 +79,7 @@ class FancyTabWidget : public QTabWidget {
   static QColor DefaultTabbarBgColor();
 
  public Q_SLOTS:
-  void SetMode(const Mode mode);
+  void SetMode(const FancyTabWidget::Mode mode);
   void SetCurrentIndex(int idx);
 
  private Q_SLOTS:

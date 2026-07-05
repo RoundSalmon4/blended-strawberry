@@ -2,6 +2,17 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="uk_UA" sourcelanguage="en-US">
   <context>
+    <name>ASXParser</name>
+    <message>
+      <source>ASX playlist is too large</source>
+      <translation type="unfinished">ASX playlist is too large</translation>
+    </message>
+    <message>
+      <source>Failed to write ASX playlist</source>
+      <translation type="unfinished">Failed to write ASX playlist</translation>
+    </message>
+  </context>
+  <context>
     <name>About</name>
     <message>
       <source>About</source>
@@ -513,12 +524,88 @@
       <translation>Виберіть колір відтворюваної композиції у списку:</translation>
     </message>
     <message>
+      <source>Window</source>
+      <translation type="unfinished">Window</translation>
+    </message>
+    <message>
+      <source>Window text</source>
+      <translation type="unfinished">Window text</translation>
+    </message>
+    <message>
+      <source>Base</source>
+      <translation type="unfinished">Base</translation>
+    </message>
+    <message>
+      <source>Alternate base</source>
+      <translation type="unfinished">Alternate base</translation>
+    </message>
+    <message>
+      <source>Tooltip base</source>
+      <translation type="unfinished">Tooltip base</translation>
+    </message>
+    <message>
+      <source>Tooltip text</source>
+      <translation type="unfinished">Tooltip text</translation>
+    </message>
+    <message>
+      <source>Placeholder text</source>
+      <translation type="unfinished">Placeholder text</translation>
+    </message>
+    <message>
+      <source>Text</source>
+      <translation type="unfinished">Text</translation>
+    </message>
+    <message>
+      <source>Button</source>
+      <translation type="unfinished">Button</translation>
+    </message>
+    <message>
+      <source>Button text</source>
+      <translation type="unfinished">Button text</translation>
+    </message>
+    <message>
+      <source>Bright text</source>
+      <translation type="unfinished">Bright text</translation>
+    </message>
+    <message>
+      <source>Select color</source>
+      <translation type="unfinished">Select color</translation>
+    </message>
+    <message>
       <source>Select background image</source>
       <translation>Вибір фонового зображення</translation>
     </message>
     <message>
       <source>You need to restart Strawberry for this setting to take affect.</source>
       <translation type="unfinished">You need to restart Strawberry for this setting to take affect.</translation>
+    </message>
+    <message>
+      <source>Colors</source>
+      <translation type="unfinished">Colors</translation>
+    </message>
+    <message>
+      <source>&amp;Use the system default color set</source>
+      <translation type="unfinished">&amp;Use the system default color set</translation>
+    </message>
+    <message>
+      <source>Use a custom color set</source>
+      <translation type="unfinished">Use a custom color set</translation>
+    </message>
+    <message>
+      <source>Set a custom color set suitable for a dark theme</source>
+      <translation type="unfinished">Set a custom color set suitable for a dark theme</translation>
+    </message>
+    <message>
+      <source>Dark mode</source>
+      <translation type="unfinished">Dark mode</translation>
+    </message>
+    <message>
+      <source>Reset the custom color set to the system default colors</source>
+      <translation type="unfinished">Reset the custom color set to the system default colors</translation>
+    </message>
+    <message>
+      <source>Reset to default</source>
+      <translation type="unfinished">Reset to default</translation>
     </message>
   </context>
   <context>
@@ -706,6 +793,14 @@
     <message>
       <source>Exponential volume scaling</source>
       <translation type="unfinished">Exponential volume scaling</translation>
+    </message>
+    <message>
+      <source>Device warm-up</source>
+      <translation type="unfinished">Device warm-up</translation>
+    </message>
+    <message>
+      <source>Delay between opening the audio device and starting playback, to avoid the start of the track being cut off while the device (DAC) is still becoming ready.  Set to 0 to disable.</source>
+      <translation type="unfinished">Delay between opening the audio device and starting playback, to avoid the start of the track being cut off while the device (DAC) is still becoming ready.  Set to 0 to disable.</translation>
     </message>
   </context>
   <context>
@@ -3027,76 +3122,6 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
   </context>
   <context>
-    <name>LastFMImport</name>
-    <message>
-      <source>Missing username, please login to last.fm first!</source>
-      <translation>Відсутнє ім&apos;я користувача. Спочатку увійдіть до last.fm!</translation>
-    </message>
-  </context>
-  <context>
-    <name>LastFMImportDialog</name>
-    <message>
-      <source>Import data from last.fm</source>
-      <translation>Імпорт даних з last.fm</translation>
-    </message>
-    <message>
-      <source>Choose data to import from last.fm</source>
-      <translation>Виберіть дані для імпорту з last.fm</translation>
-    </message>
-    <message>
-      <source>Last played</source>
-      <translation>Останнє відтворення</translation>
-    </message>
-    <message>
-      <source>Play counts</source>
-      <translation>Кількості відтворень</translation>
-    </message>
-    <message>
-      <source>Warning: Play counts and last played from last.fm will completely replace the same data for the matched songs. Play counts will replace the data based on artist and song title for the same albums! Please backup your database before you start.</source>
-      <translation>Попередження: кількість відтворень і останні відтворення з last.fm повністю замінять ті самі дані для відповідних пісень. Кількість відтворень буде замінена даними на основі виконавця та назви композиції для тих самих альбомів! Перед початком створіть резервну копію бази даних.</translation>
-    </message>
-    <message>
-      <source>Go!</source>
-      <translation>Уперед!</translation>
-    </message>
-    <message>
-      <source>Close</source>
-      <translation>Закрити</translation>
-    </message>
-    <message>
-      <source>Cancel</source>
-      <translation>Скасувати</translation>
-    </message>
-    <message>
-      <source>Receiving initial data from last.fm...</source>
-      <translation>Отримання початкових даних з last.fm...</translation>
-    </message>
-    <message>
-      <source>Receiving playcount for %1 songs and last played for %2 songs.</source>
-      <translation>Отримання кількості відтворень для %1композицій і дані про останнє відтворення для %2 композицій.</translation>
-    </message>
-    <message>
-      <source>Receiving last played for %1 songs.</source>
-      <translation>Отримання даних про останнє відтворення для %1 композицій.</translation>
-    </message>
-    <message>
-      <source>Receiving playcounts for %1 songs.</source>
-      <translation>Отримання кількостей відтворення для %1 композицій.</translation>
-    </message>
-    <message>
-      <source>Playcounts for %1 songs and last played for %2 songs received.</source>
-      <translation>Отримано кількість відтворень для %1композицій і дані про останнє відтворення для %2 композицій.</translation>
-    </message>
-    <message>
-      <source>Last played for %1 songs received.</source>
-      <translation>Отримано дані про останнє відтворення для %1 композицій.</translation>
-    </message>
-    <message>
-      <source>Playcounts for %1 songs received.</source>
-      <translation>Кількість відтворень для %1 отриманих композицій.</translation>
-    </message>
-  </context>
-  <context>
     <name>LastFMScrobbler</name>
     <message>
       <source>%1 Scrobbler Authentication</source>
@@ -3515,10 +3540,6 @@ If there are no matches then it will use the largest image in the directory.</so
     <message>
       <source>Show sidebar</source>
       <translation>Показати бічну панель</translation>
-    </message>
-    <message>
-      <source>Import data from last.fm...</source>
-      <translation>Імпортувати дані з last.fm...</translation>
     </message>
     <message>
       <source>Context</source>
@@ -7958,6 +7979,13 @@ Are you sure you want to continue?</source>
     <message>
       <source>Save the .waveform files directly in the songs folders</source>
       <translation type="unfinished">Save the .waveform files directly in the songs folders</translation>
+    </message>
+  </context>
+  <context>
+    <name>XSPFParser</name>
+    <message>
+      <source>Failed to write XSPF playlist</source>
+      <translation type="unfinished">Failed to write XSPF playlist</translation>
     </message>
   </context>
 </TS>

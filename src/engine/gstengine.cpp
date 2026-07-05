@@ -932,12 +932,12 @@ GstEnginePipelinePtr GstEngine::CreatePipeline() {
   pipeline->set_buffer_duration_nanosec(buffer_duration_nanosec_);
   pipeline->set_buffer_low_watermark(buffer_low_watermark_);
   pipeline->set_buffer_high_watermark(buffer_high_watermark_);
-  pipeline->set_device_warmup_duration_ms(device_warmup_duration_ms_);
+  pipeline->set_device_warmup_duration_ms(current_pipeline_ ? 0 : device_warmup_duration_ms_);
   pipeline->set_proxy_settings(proxy_address_, proxy_authentication_, proxy_user_, proxy_pass_);
   pipeline->set_channels(channels_enabled_, channels_);
   pipeline->set_bs2b_enabled(bs2b_enabled_);
   pipeline->set_strict_ssl_enabled(strict_ssl_enabled_);
-  pipeline->set_fading_enabled(fadeout_enabled_ || autocrossfade_enabled_ || fadeout_pause_enabled_);
+  pipeline->set_fading_enabled(fadeout_enabled_ || crossfade_enabled_ || autocrossfade_enabled_ || fadeout_pause_enabled_);
 
 #ifdef HAVE_SPOTIFY
   pipeline->set_spotify_access_token(spotify_access_token_);
