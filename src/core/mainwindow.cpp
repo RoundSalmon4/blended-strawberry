@@ -103,6 +103,7 @@
 #include "core/deletefiles.h"
 #include "core/settings.h"
 #include "core/player.h"
+#include "core/appearance.h"
 #include "utilities/envutils.h"
 #include "utilities/filemanagerutils.h"
 #include "utilities/screenutils.h"
@@ -112,7 +113,6 @@
 #include "dialogs/console.h"
 #include "dialogs/addstreamdialog.h"
 #include "dialogs/deleteconfirmationdialog.h"
-#include "dialogs/lastfmimportdialog.h"
 #include "dialogs/messagedialog.h"
 #include "dialogs/edittagdialog.h"
 #include "dialogs/trackselectiondialog.h"
@@ -198,7 +198,6 @@
 #include "radios/radiobrowsersearchview.h"
 
 #include "scrobbler/audioscrobbler.h"
-#include "scrobbler/lastfmimport.h"
 
 #ifdef HAVE_MUSICBRAINZ
 #  include "musicbrainz/tagfetcher.h"
@@ -310,6 +309,7 @@ MainWindow::MainWindow(Application *app,
       smtc_(new WinSystemMediaTransportControls(app->player(), this)),
 #endif
       app_(app),
+      appearance_(make_shared<Appearance>()),
       systemtrayicon_(systemtrayicon),
       osd_(osd),
 #ifdef HAVE_DISCORD_RPC
@@ -377,7 +377,6 @@ MainWindow::MainWindow(Application *app,
       qobuz_view_(new StreamingTabsView(app->streaming_services()->ServiceBySource(Song::Source::Qobuz), app->albumcover_loader(), QLatin1String(QobuzSettings::kSettingsGroup), this)),
 #endif
       radio_view_(new RadioViewContainer(this)),
-      lastfm_import_dialog_(new LastFMImportDialog(app_->lastfm_import(), this)),
       collection_show_all_(nullptr),
       collection_show_duplicates_(nullptr),
       collection_show_untagged_(nullptr),
@@ -570,7 +569,6 @@ MainWindow::MainWindow(Application *app,
   ui_->action_full_collection_scan->setIcon(IconLoader::Load(u"view-refresh"_s));
   ui_->action_stop_collection_scan->setIcon(IconLoader::Load(u"dialog-error"_s));
   ui_->action_settings->setIcon(IconLoader::Load(u"configure"_s));
-  ui_->action_import_data_from_last_fm->setIcon(IconLoader::Load(u"scrobble"_s));
   ui_->action_console->setIcon(IconLoader::Load(u"keyboard"_s));
   ui_->action_toggle_show_sidebar->setIcon(IconLoader::Load(u"view-choose"_s));
   ui_->action_auto_complete_tags->setIcon(IconLoader::Load(u"musicbrainz"_s));
@@ -610,7 +608,6 @@ MainWindow::MainWindow(Application *app,
   QObject::connect(ui_->action_auto_complete_tags, &QAction::triggered, this, &MainWindow::AutoCompleteTags);
 #endif
   QObject::connect(ui_->action_settings, &QAction::triggered, this, &MainWindow::OpenSettingsDialog);
-  QObject::connect(ui_->action_import_data_from_last_fm, &QAction::triggered, lastfm_import_dialog_, &LastFMImportDialog::show);
   QObject::connect(ui_->action_toggle_show_sidebar, &QAction::toggled, this, &MainWindow::ToggleSidebar);
   QObject::connect(ui_->action_about_strawberry, &QAction::triggered, this, &MainWindow::ShowAboutDialog);
   QObject::connect(ui_->action_about_qt, &QAction::triggered, qApp, &QApplication::aboutQt);
@@ -995,6 +992,10 @@ MainWindow::MainWindow(Application *app,
   QObject::connect(ui_->action_console, &QAction::triggered, this, &MainWindow::ShowConsole);
   PlayingWidgetPositionChanged(ui_->widget_playing->show_above_status_bar());
 
+  // Load theme
+  // We need to save the default/system palette now, before loading user preferred theme (which will override it), to be able to restore it later
+  appearance_->set_system_palette(QApplication::palette());
+  appearance_->LoadUserTheme();
   StyleSheetLoader *css_loader = new StyleSheetLoader(this);
   css_loader->SetStyleSheet(this, u":/style/strawberry.css"_s);
 
@@ -1020,14 +1021,6 @@ MainWindow::MainWindow(Application *app,
   ScrobbleButtonVisibilityChanged(app_->scrobbler()->scrobble_button());
   LoveButtonVisibilityChanged(app_->scrobbler()->love_button());
   ScrobblingEnabledChanged(app_->scrobbler()->enabled());
-
-  // Last.fm ImportData
-  QObject::connect(&*app_->lastfm_import(), &LastFMImport::Finished, lastfm_import_dialog_, &LastFMImportDialog::Finished);
-  QObject::connect(&*app_->lastfm_import(), &LastFMImport::FinishedWithError, lastfm_import_dialog_, &LastFMImportDialog::FinishedWithError);
-  QObject::connect(&*app_->lastfm_import(), &LastFMImport::UpdateTotal, lastfm_import_dialog_, &LastFMImportDialog::UpdateTotal);
-  QObject::connect(&*app_->lastfm_import(), &LastFMImport::UpdateProgress, lastfm_import_dialog_, &LastFMImportDialog::UpdateProgress);
-  QObject::connect(&*app_->lastfm_import(), &LastFMImport::UpdateLastPlayed, &*app_->collection_backend(), &CollectionBackend::UpdateLastPlayed);
-  QObject::connect(&*app_->lastfm_import(), &LastFMImport::UpdatePlayCount, &*app_->collection_backend(), &CollectionBackend::UpdatePlayCount);
 
 #if !defined(HAVE_AUDIOCD)
   ui_->action_open_cd->setEnabled(false);
@@ -3057,6 +3050,7 @@ SettingsDialog *MainWindow::CreateSettingsDialog() {
                                                        app_->lyrics_providers(),
                                                        app_->scrobbler(),
                                                        app_->streaming_services(),
+                                                       appearance_,
 #ifdef HAVE_GLOBALSHORTCUTS
                                                        globalshortcuts_manager_,
 #endif

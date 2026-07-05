@@ -62,6 +62,7 @@
 #include "covermanager/albumcoverimageresult.h"
 
 class About;
+class Appearance;
 class Console;
 class AlbumCoverManager;
 class Application;
@@ -97,7 +98,6 @@ class Windows7ThumbBar;
 class WinSystemMediaTransportControls;
 #endif
 class AddStreamDialog;
-class LastFMImportDialog;
 class RadioViewContainer;
 #if QT_CONFIG(sessionmanager)
 class QSessionManager;
@@ -317,6 +317,7 @@ class MainWindow : public QMainWindow, public PlatformInterface {
 #endif
 
   Application *app_;
+  SharedPtr<Appearance> appearance_;
   SharedPtr<SystemTrayIcon> systemtrayicon_;
   OSDBase *osd_;
 #ifdef HAVE_DISCORD_RPC
@@ -366,8 +367,6 @@ class MainWindow : public QMainWindow, public PlatformInterface {
 #endif
 
   RadioViewContainer *radio_view_;
-
-  LastFMImportDialog *lastfm_import_dialog_;
 
   QAction *collection_show_all_;
   QAction *collection_show_duplicates_;
