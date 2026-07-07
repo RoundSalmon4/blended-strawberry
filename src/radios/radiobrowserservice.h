@@ -39,7 +39,7 @@ class RadioBrowserService : public RadioService {
 
  public:
   explicit RadioBrowserService(const SharedPtr<TaskManager> task_manager, const SharedPtr<NetworkAccessManager> network, QObject *parent = nullptr);
-  ~RadioBrowserService();
+  ~RadioBrowserService() override;
 
   QUrl Homepage() override;
   QUrl Donate() override;
@@ -86,9 +86,9 @@ class RadioBrowserService : public RadioService {
     QString tag;
     QString language;
     QString order;
-    int limit;
-    int offset;
-    bool hide_broken;
+    int limit{};
+    int offset{};
+    bool hide_broken{};
   };
   PendingSearch pending_search_;
   bool has_pending_search_;

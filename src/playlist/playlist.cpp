@@ -509,7 +509,7 @@ void Playlist::ItemReload(const QPersistentModelIndex &idx, const bool metadata_
     PlaylistItemPtr item = item_at(idx.row());
     if (item) {
       QFuture<Song> future = item->BackgroundReload();
-      QFutureWatcher<Song> *watcher = new QFutureWatcher<Song>();
+      QFutureWatcher<Song> *watcher = new QFutureWatcher<Song>(this);
       QObject::connect(watcher, &QFutureWatcher<Song>::finished, this, [this, watcher, idx, metadata_edit]() {
         ItemReloadComplete(idx, watcher->result(), metadata_edit);
         watcher->deleteLater();
@@ -1904,7 +1904,7 @@ PlaylistItemPtrList Playlist::RemoveItemsWithoutUndo(const int row, const int co
 bool Playlist::RemoveItemWithSignal(PlaylistItemPtr item) {
 
   item->set_signal(true);
-  return removeRows(items_.indexOf(item), 1);
+  return removeRows(static_cast<int>(items_.indexOf(item)), 1);
 
 }
 
@@ -2687,7 +2687,7 @@ void Playlist::SkipTracks(const QModelIndexList &source_indexes) {
 
   for (const QModelIndex &source_index : source_indexes) {
     PlaylistItemPtr track_to_skip = item_at(source_index.row());
-    track_to_skip->SetShouldSkip(!((track_to_skip)->GetShouldSkip()));
+    track_to_skip->SetShouldSkip(!(track_to_skip->GetShouldSkip()));
     Q_EMIT dataChanged(source_index, source_index);
   }
 

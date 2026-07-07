@@ -65,11 +65,11 @@ class CDDADevice : public ConnectedDevice {
                                   const bool first_time,
                                   QObject *parent = nullptr);
 
-  ~CDDADevice();
+  ~CDDADevice() override;
 
   bool Init() override;
-  bool CopyToStorage(const CopyJob&, QString&) override { return false; }
-  bool DeleteFromStorage(const MusicStorage::DeleteJob&) override { return false; }
+  bool CopyToStorage(const CopyJob &job, QString &error_text) override { Q_UNUSED(job) Q_UNUSED(error_text) return false; }
+  bool DeleteFromStorage(const MusicStorage::DeleteJob &job) override { Q_UNUSED(job) return false; }
 
   static QStringList url_schemes() { return QStringList() << QStringLiteral("cdda"); }
 
