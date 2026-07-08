@@ -1920,10 +1920,11 @@ void GstEnginePipeline::StateChangedMessageReceived(GstMessage *msg) {
         SetStateAsync(requested_state);
       }
     }
-    if (fader_ && fader_active_.load() && !fader_running_.load() && new_state == GST_STATE_PLAYING) {
-      qLog(Debug) << "Resuming fader";
-      ResumeFaderAsync();
-    }
+  }
+
+  if (pipeline_active_.load() && fader_ && fader_active_.load() && !fader_running_.load() && new_state == GST_STATE_PLAYING) {
+    qLog(Debug) <<  "Pipeline" << id() << "Resuming fader";
+    ResumeFaderAsync();
   }
 
 }
@@ -2473,12 +2474,15 @@ void GstEnginePipeline::SetFaderVolume(const qreal volume) {
 void GstEnginePipeline::ResumeFaderAsync() {
 
   if (fader_ && fader_active_.load() && !fader_running_.load()) {
+    QMetaObject::invokeMethod(timer_fader_timeout_, qOverload<>(&QTimer::start), Qt::QueuedConnection);
     QMetaObject::invokeMethod(&*fader_, &QTimeLine::resume, Qt::QueuedConnection);
   }
 
 }
 
 void GstEnginePipeline::FaderTimelineStateChanged(const QTimeLine::State state) {
+
+  qLog(Debug) << "Pipeline" << id() << "fader state changed to" << (state == QTimeLine::State::Running ? "running" : state == QTimeLine::State::Paused ? "paused" : "not running");
 
   fader_running_ = state == QTimeLine::State::Running;
 

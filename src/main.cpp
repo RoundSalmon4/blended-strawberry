@@ -59,6 +59,7 @@
 #include <QSettings>
 #include <QLoggingCategory>
 #include <QStyle>
+#include <QStyleHints>
 #include <QMessageBox>
 #ifdef HAVE_TRANSLATIONS
 #  include <QTranslator>
@@ -242,11 +243,28 @@ int main(int argc, char *argv[]) {
       style = "default"_L1;
       s.setValue(AppearanceSettings::kStyle, style);
     }
+    const bool dark_mode = s.value(AppearanceSettings::kDarkMode, false).toBool();
     s.endGroup();
     if (style != "default"_L1) {
       QApplication::setStyle(style);
     }
-    if (QApplication::style()) qLog(Debug) << "Style:" << QApplication::style()->objectName();
+    (void) dark_mode;
+#if defined(Q_OS_WIN32) || defined(Q_OS_MACOS)
+    if (dark_mode && QApplication::style()) {
+      const QString current_style = QApplication::style()->objectName();
+#if defined(Q_OS_WIN32)
+      const bool is_native = current_style.compare(u"windowsvista"_s, Qt::CaseInsensitive) == 0 || current_style.compare(u"windows11"_s, Qt::CaseInsensitive) == 0;
+#elif defined(Q_OS_MACOS)
+      const bool is_native = current_style.compare(u"macos"_s, Qt::CaseInsensitive) == 0;
+#endif
+      if (is_native) {
+        QGuiApplication::styleHints()->setColorScheme(Qt::ColorScheme::Dark);
+      }
+    }
+#endif
+    if (QApplication::style()) {
+      qLog(Debug) << "Style:" << QApplication::style()->objectName();
+    }
   }
 
   // Set the permissions on the config file on Unix - it can contain passwords for streaming services, so it's important that other users can't read it.
