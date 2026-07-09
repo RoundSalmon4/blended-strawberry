@@ -2,7 +2,7 @@
  * Strawberry Music Player
  * This file was part of Clementine.
  * Copyright 2010, David Sansome <me@davidsansome.com>
- * Copyright 2018-2021, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2018-2026, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@
 
 #import <QuartzCore/CALayer.h>
 
-//#import <SPMediaKeyTap.h>
+#import <UserNotifications/UserNotifications.h>
 
 #include "config.h"
 
@@ -68,9 +68,6 @@ QDebug operator<<(QDebug dbg, NSObject *object) {
   return dbg.space();
 
 }
-
-// Capture global media keys on Mac (Cocoa only!)
-// See: http://www.rogueamoeba.com/utm/2007/09/29/apple-keyboard-media-key-event-handling/
 
 @interface MacApplication : NSApplication {
 
@@ -145,18 +142,14 @@ QDebug operator<<(QDebug dbg, NSObject *object) {
 
   [[NSAppleEventManager sharedAppleEventManager] setEventHandler:self andSelector:@selector(handleURLEvent:withReplyEvent:) forEventClass:kInternetEventClass andEventID:kAEGetURL];
 
-  // key_tap_ = [[SPMediaKeyTap alloc] initWithDelegate:self];
-  // if ([SPMediaKeyTap usesGlobalMediaKeyTap]) {
-  //   if ([key_tap_ startWatchingMediaKeys]) {
-  //       qLog(Debug) << "Media key monitoring started";
-  //   }
-  //   else {
-  //       qLog(Warning) << "Failed to start media key monitoring";
-  //   }
-  // }
-  // else {
-  //   qLog(Warning) << "Media key monitoring disabled";
-  // }
+  // Requesting authorization before the app has finished launching (e.g. from SetApplicationHandler:, which runs before QApplication::exec() starts the run loop) is rejected outright by the notification daemon, regardless of code signing.
+  UNUserNotificationCenter *notification_center = [UNUserNotificationCenter currentNotificationCenter];
+  notification_center.delegate = self;
+  [notification_center requestAuthorizationWithOptions:(UNAuthorizationOptionAlert | UNAuthorizationOptionSound) completionHandler:^(BOOL granted, NSError *error) {
+    if (!granted) {
+      qLog(Warning) << "Notification authorization was not granted:" << (error ? QString::fromNSString(error.localizedDescription) : QStringLiteral("Unknown error"));
+    }
+  }];
 
 }
 
@@ -192,11 +185,6 @@ QDebug operator<<(QDebug dbg, NSObject *object) {
 
 }
 
-// - (void) mediaKeyTap: (SPMediaKeyTap*)keyTap receivedMediaKeyEvent:(NSEvent*)event {
-//   #pragma unused(keyTap)
-//   [self handleMediaEvent:event];
-// }
-
 - (BOOL) handleMediaEvent:(NSEvent*)event {
   // if it is not a media key event, then ignore
   if ([event type] == NSEventTypeSystemDefined && [event subtype] == 8) {
@@ -217,11 +205,16 @@ QDebug operator<<(QDebug dbg, NSObject *object) {
   return NSTerminateNow;
 }
 
-- (BOOL) userNotificationCenter: (id)center shouldPresentNotification: (id)notification {
+- (void) userNotificationCenter: (UNUserNotificationCenter*)center
+    willPresentNotification: (UNNotification*)notification
+    withCompletionHandler: (void (^)(UNNotificationPresentationOptions options))completionHandler {
+
   Q_UNUSED(center);
   Q_UNUSED(notification);
+
   // Always show notifications, even if Strawberry is in the foreground.
-  return YES;
+  completionHandler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionList);
+
 }
 
 @end
@@ -256,16 +249,6 @@ QDebug operator<<(QDebug dbg, NSObject *object) {
   // this makes sure the delegate's shortcut_handler is set
   [delegate_ setShortcutHandler:shortcut_handler_];
   [self setDelegate:delegate_];
-
-  // FIXME
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-  [[NSUserNotificationCenter defaultUserNotificationCenter]setDelegate:delegate_];
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
 
 }
 

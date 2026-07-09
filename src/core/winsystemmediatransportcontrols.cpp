@@ -40,9 +40,9 @@
 #include <QMetaObject>
 #include <QString>
 #include <QImage>
+#include <QBuffer>
 #include <QUrl>
-#include <QDir>
-#include <QFile>
+#include <QTimer>
 
 #include "core/logging.h"
 #include "core/song.h"
@@ -72,10 +72,18 @@ WinSystemMediaTransportControls::WinSystemMediaTransportControls(SharedPtr<Playe
       player_(player),
       ro_initialized_(false),
       smtc_(nullptr),
+      smtc2_(nullptr),
       updater_(nullptr),
       button_handler_(nullptr),
       button_pressed_token_(0),
-      state_(EngineBase::State::Empty) {}
+      state_(EngineBase::State::Empty),
+      current_duration_nanosec_(0),
+      timeline_timer_(new QTimer(this)) {
+
+  timeline_timer_->setInterval(1000);
+  QObject::connect(timeline_timer_, &QTimer::timeout, this, &WinSystemMediaTransportControls::UpdateTimeline);
+
+}
 
 WinSystemMediaTransportControls::~WinSystemMediaTransportControls() {
 
@@ -97,6 +105,11 @@ WinSystemMediaTransportControls::~WinSystemMediaTransportControls() {
     updater_ = nullptr;
   }
 
+  if (smtc2_) {
+    static_cast<ABI::Windows::Media::ISystemMediaTransportControls2*>(smtc2_)->Release();
+    smtc2_ = nullptr;
+  }
+
   if (smtc) {
     smtc->put_IsEnabled(false);
     smtc->Release();
@@ -105,10 +118,6 @@ WinSystemMediaTransportControls::~WinSystemMediaTransportControls() {
 
   if (ro_initialized_) {
     RoUninitialize();
-  }
-
-  if (!temp_art_path_.isEmpty()) {
-    QFile::remove(temp_art_path_);
   }
 
 }
@@ -187,6 +196,14 @@ bool WinSystemMediaTransportControls::Initialize(const HWND hwnd) {
   smtc_ = smtc;
   updater_ = updater;
 
+  ABI::Windows::Media::ISystemMediaTransportControls2 *smtc2 = nullptr;
+  if (SUCCEEDED(smtc->QueryInterface(__uuidof(ABI::Windows::Media::ISystemMediaTransportControls2), reinterpret_cast<void**>(&smtc2)))) {
+    smtc2_ = smtc2;
+  }
+  else {
+    qLog(Warning) << "WinSystemMediaTransportControls: ISystemMediaTransportControls2 unavailable, timeline disabled";
+  }
+
   qLog(Info) << "WinSystemMediaTransportControls: Initialized";
 
   return true;
@@ -198,12 +215,22 @@ void WinSystemMediaTransportControls::EngineStateChanged(const EngineBase::State
   state_ = state;
   UpdatePlaybackStatus(state);
 
+  if (state == EngineBase::State::Playing) {
+    timeline_timer_->start();
+  }
+  else {
+    timeline_timer_->stop();
+    UpdateTimeline();
+  }
+
 }
 
 void WinSystemMediaTransportControls::CurrentSongChanged(const Song &song) {
 
   current_song_url_ = song.url();
+  current_duration_nanosec_ = song.length_nanosec();
   UpdateMetadata(song);
+  UpdateTimeline();
 
 }
 
@@ -217,6 +244,46 @@ void WinSystemMediaTransportControls::AlbumCoverLoaded(const Song &song, const A
   else {
     ClearThumbnail();
   }
+
+}
+
+void WinSystemMediaTransportControls::UpdateTimeline() {
+
+  if (!smtc2_) return;
+
+  ABI::Windows::Media::ISystemMediaTransportControls2 *smtc2 = static_cast<ABI::Windows::Media::ISystemMediaTransportControls2*>(smtc2_);
+
+  HSTRING h_class = nullptr;
+  static const wchar_t kClass[] = L"Windows.Media.SystemMediaTransportControlsTimelineProperties";
+  WindowsCreateString(kClass, static_cast<UINT32>(wcslen(kClass)), &h_class);
+
+  IInspectable *insp = nullptr;
+  const HRESULT hr = RoActivateInstance(h_class, &insp);
+  WindowsDeleteString(h_class);
+  if (FAILED(hr) || !insp) return;
+
+  ABI::Windows::Media::ISystemMediaTransportControlsTimelineProperties *props = nullptr;
+  if (FAILED(insp->QueryInterface(__uuidof(ABI::Windows::Media::ISystemMediaTransportControlsTimelineProperties), reinterpret_cast<void**>(&props))) || !props) {
+    insp->Release();
+    return;
+  }
+  insp->Release();
+
+  const qint64 pos_ns = player_->engine()->position_nanosec();
+  const qint64 dur_ns = current_duration_nanosec_ > 0 ? current_duration_nanosec_ : player_->engine()->length_nanosec();
+
+  ABI::Windows::Foundation::TimeSpan zero_ts = {};
+  ABI::Windows::Foundation::TimeSpan pos_ts = { pos_ns / 100 };
+  ABI::Windows::Foundation::TimeSpan dur_ts = { dur_ns / 100 };
+
+  props->put_StartTime(zero_ts);
+  props->put_EndTime(dur_ts);
+  props->put_MinSeekTime(zero_ts);
+  props->put_MaxSeekTime(dur_ts);
+  props->put_Position(pos_ts);
+
+  smtc2->UpdateTimelineProperties(props);
+  props->Release();
 
 }
 
@@ -293,70 +360,127 @@ void WinSystemMediaTransportControls::UpdateMetadata(const Song &song) {
 
 void WinSystemMediaTransportControls::SetThumbnail(const QImage &image) {
 
-  if (temp_art_path_.isEmpty()) {
-    temp_art_path_ = QDir::tempPath() + QStringLiteral("/strawberry_smtc_art.jpg");
-  }
-
-  if (!image.save(temp_art_path_, "JPEG", 90)) {
-    qLog(Warning) << "WinSystemMediaTransportControls: Failed to save thumbnail";
-    ClearThumbnail();
-    return;
-  }
-
-  SetThumbnailFromFile(temp_art_path_);
-
-}
-
-void WinSystemMediaTransportControls::SetThumbnailFromFile(const QString &path) {
-
   if (!updater_) return;
 
   ISystemMediaTransportControlsDisplayUpdater *updater = static_cast<ISystemMediaTransportControlsDisplayUpdater*>(updater_);
 
-  const QString file_uri = QUrl::fromLocalFile(path).toString(QUrl::FullyEncoded);
+  // Encode image to JPEG bytes in memory
+  QByteArray jpeg_data;
+  {
+    QBuffer buf(&jpeg_data);
+    buf.open(QIODevice::WriteOnly);
+    if (!image.save(&buf, "JPEG", 90)) {
+      qLog(Warning) << "WinSystemMediaTransportControls: Failed to encode thumbnail";
+      ClearThumbnail();
+      return;
+    }
+  }
 
-  // Create WinRT Uri object
-  HSTRING h_uri_class = nullptr;
-  static const wchar_t kUriClass[] = L"Windows.Foundation.Uri";
-  WindowsCreateString(kUriClass, static_cast<UINT32>(wcslen(kUriClass)), &h_uri_class);
-
-  IUriRuntimeClassFactory *uri_factory = nullptr;
-  HRESULT hr = RoGetActivationFactory(h_uri_class, __uuidof(IUriRuntimeClassFactory), reinterpret_cast<void**>(&uri_factory));
-  WindowsDeleteString(h_uri_class);
-
-  if (FAILED(hr) || !uri_factory) return;
-
-  HSTRING h_uri = nullptr;
-  const std::wstring w_uri = file_uri.toStdWString();
-  WindowsCreateString(w_uri.c_str(), static_cast<UINT32>(w_uri.size()), &h_uri);
-
-  IUriRuntimeClass *uri = nullptr;
-  hr = uri_factory->CreateUri(h_uri, &uri);
-  WindowsDeleteString(h_uri);
-  uri_factory->Release();
-
-  if (FAILED(hr) || !uri) return;
-
-  // Create RandomAccessStreamReference from the file URI
-  HSTRING h_stream_class = nullptr;
-  static const wchar_t kStreamRefClass[] = L"Windows.Storage.Streams.RandomAccessStreamReference";
-  WindowsCreateString(kStreamRefClass, static_cast<UINT32>(wcslen(kStreamRefClass)), &h_stream_class);
-
-  IRandomAccessStreamReferenceStatics *stream_statics = nullptr;
-  hr = RoGetActivationFactory(h_stream_class, __uuidof(IRandomAccessStreamReferenceStatics), reinterpret_cast<void**>(&stream_statics));
-  WindowsDeleteString(h_stream_class);
-
-  if (FAILED(hr) || !stream_statics) {
-    uri->Release();
+  // Create InMemoryRandomAccessStream — an agile (free-threaded) WinRT type.
+  // Unlike CreateRandomAccessStreamOverStream, it has no STA affinity, so the SMTC background MTA thread can call OpenReadAsync without marshaling back to the GUI STA.
+  IRandomAccessStream *ra_stream = nullptr;
+  {
+    HSTRING h = nullptr;
+    static const wchar_t kImsClass[] = L"Windows.Storage.Streams.InMemoryRandomAccessStream";
+    WindowsCreateString(kImsClass, static_cast<UINT32>(wcslen(kImsClass)), &h);
+    IInspectable *insp = nullptr;
+    const HRESULT hr = RoActivateInstance(h, &insp);
+    WindowsDeleteString(h);
+    if (FAILED(hr) || !insp) {
+      ClearThumbnail();
+      return;
+    }
+    insp->QueryInterface(__uuidof(IRandomAccessStream), reinterpret_cast<void**>(&ra_stream));
+    insp->Release();
+  }
+  if (!ra_stream) {
+    ClearThumbnail();
     return;
   }
 
-  IRandomAccessStreamReference *stream_ref = nullptr;
-  hr = stream_statics->CreateFromUri(uri, &stream_ref);
-  uri->Release();
-  stream_statics->Release();
+  // Write JPEG bytes into the stream via DataWriter
+  {
+    IOutputStream *out = nullptr;
+    ra_stream->GetOutputStreamAt(0, &out);
+    if (!out) {
+      ra_stream->Release();
+      ClearThumbnail();
+      return;
+    }
 
-  if (FAILED(hr) || !stream_ref) return;
+    IDataWriterFactory *dwf = nullptr;
+    {
+      HSTRING h = nullptr;
+      static const wchar_t kDwClass[] = L"Windows.Storage.Streams.DataWriter";
+      WindowsCreateString(kDwClass, static_cast<UINT32>(wcslen(kDwClass)), &h);
+      RoGetActivationFactory(h, __uuidof(IDataWriterFactory), reinterpret_cast<void**>(&dwf));
+      WindowsDeleteString(h);
+    }
+    if (!dwf) {
+      out->Release();
+      ra_stream->Release();
+      ClearThumbnail();
+      return;
+    }
+
+    IDataWriter *dw = nullptr;
+    dwf->CreateDataWriter(out, &dw);
+    dwf->Release();
+    out->Release();
+    if (!dw) {
+      ra_stream->Release();
+      ClearThumbnail();
+      return;
+    }
+
+    // WriteBytes buffers data synchronously into DataWriter's internal buffer
+    dw->WriteBytes(static_cast<UINT32>(jpeg_data.size()), reinterpret_cast<BYTE*>(const_cast<char*>(jpeg_data.constData())));
+
+    // StoreAsync flushes to the InMemoryRandomAccessStream.
+    // The completion callback runs on an MTA thread pool thread — no STA marshal, so WaitForSingleObject from the GUI STA thread cannot deadlock here.
+    using StoreOp = __FIAsyncOperation_1_UINT32_t;
+    using StoreHandler = __FIAsyncOperationCompletedHandler_1_UINT32_t;
+    StoreOp *store_op = nullptr;
+    dw->StoreAsync(&store_op);
+    if (store_op) {
+      HANDLE ev = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+      if (ev) {
+        auto cb = Microsoft::WRL::Callback<StoreHandler>([ev](StoreOp *, AsyncStatus) -> HRESULT {
+          SetEvent(ev);
+          return S_OK;
+        });
+        store_op->put_Completed(cb.Get());
+        WaitForSingleObject(ev, 5000);
+        CloseHandle(ev);
+      }
+      store_op->Release();
+    }
+
+    IOutputStream *detached = nullptr;
+    dw->DetachStream(&detached);
+    if (detached) detached->Release();
+    dw->Release();
+  }
+
+  // Create a RandomAccessStreamReference from the agile stream
+  IRandomAccessStreamReference *stream_ref = nullptr;
+  {
+    HSTRING h = nullptr;
+    static const wchar_t kSrClass[] = L"Windows.Storage.Streams.RandomAccessStreamReference";
+    WindowsCreateString(kSrClass, static_cast<UINT32>(wcslen(kSrClass)), &h);
+    IRandomAccessStreamReferenceStatics *statics = nullptr;
+    RoGetActivationFactory(h, __uuidof(IRandomAccessStreamReferenceStatics), reinterpret_cast<void**>(&statics));
+    WindowsDeleteString(h);
+    if (statics) {
+      statics->CreateFromStream(ra_stream, &stream_ref);
+      statics->Release();
+    }
+  }
+  ra_stream->Release();
+  if (!stream_ref) {
+    ClearThumbnail();
+    return;
+  }
 
   updater->put_Thumbnail(stream_ref);
   stream_ref->Release();

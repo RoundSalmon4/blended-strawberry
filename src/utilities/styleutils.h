@@ -1,8 +1,6 @@
 /*
  * Strawberry Music Player
- * This file was part of Clementine.
- * Copyright 2010, David Sansome <me@davidsansome.com>
- * Copyright 2018-2026, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2026, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,30 +17,16 @@
  *
  */
 
-#ifndef OSDMAC_H
-#define OSDMAC_H
+#ifndef STYLEUTILS_H
+#define STYLEUTILS_H
 
-#include "config.h"
-
-#include <QtGlobal>
-#include <QObject>
 #include <QString>
-#include <QImage>
 
-#include "osdbase.h"
+namespace Utilities {
 
-class OSDMac : public OSDBase {
-  Q_OBJECT
+bool StyleHasCustomPaletteColorsSupport(const QString &style_name);
+bool StyleHasDarkModeSupport(const QString &style_name);
 
- public:
-  explicit OSDMac(const SharedPtr<SystemTrayIcon> tray_icon, QObject *parent = nullptr);
-  ~OSDMac() override;
+}  // namespace Utilities
 
-  bool SupportsNativeNotifications() const override;
-  bool SupportsTrayPopups() const override;
-
- private:
-  void ShowMessageNative(const QString &summary, const QString &message, const QString &icon, const QImage &image) override;
-};
-
-#endif  // OSDMAC_H
+#endif  // STYLEUTILS_H

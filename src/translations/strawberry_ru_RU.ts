@@ -372,10 +372,6 @@
       <translation>Стиль</translation>
     </message>
     <message>
-      <source>Use system theme icons</source>
-      <translation>Использовать системную тему значков</translation>
-    </message>
-    <message>
       <source>Tabbar colors</source>
       <translation>Цвета вкладок</translation>
     </message>
@@ -525,87 +521,103 @@
     </message>
     <message>
       <source>Window</source>
-      <translation type="unfinished">Window</translation>
+      <translation>Окно</translation>
     </message>
     <message>
       <source>Window text</source>
-      <translation type="unfinished">Window text</translation>
+      <translation>Текст окна</translation>
     </message>
     <message>
       <source>Base</source>
-      <translation type="unfinished">Base</translation>
+      <translation>Основа</translation>
     </message>
     <message>
       <source>Alternate base</source>
-      <translation type="unfinished">Alternate base</translation>
+      <translation>Альтернативная основа</translation>
     </message>
     <message>
       <source>Tooltip base</source>
-      <translation type="unfinished">Tooltip base</translation>
+      <translation>Основа подсказки</translation>
     </message>
     <message>
       <source>Tooltip text</source>
-      <translation type="unfinished">Tooltip text</translation>
+      <translation>Текст подсказки</translation>
     </message>
     <message>
       <source>Placeholder text</source>
-      <translation type="unfinished">Placeholder text</translation>
+      <translation>Текст-заполнитель</translation>
     </message>
     <message>
       <source>Text</source>
-      <translation type="unfinished">Text</translation>
+      <translation>Текст</translation>
     </message>
     <message>
       <source>Button</source>
-      <translation type="unfinished">Button</translation>
+      <translation>Кнопка</translation>
     </message>
     <message>
       <source>Button text</source>
-      <translation type="unfinished">Button text</translation>
+      <translation>Текст кнопки</translation>
     </message>
     <message>
       <source>Bright text</source>
-      <translation type="unfinished">Bright text</translation>
+      <translation>Яркий текст</translation>
     </message>
     <message>
       <source>Select color</source>
-      <translation type="unfinished">Select color</translation>
+      <translation>Выбрать цвет</translation>
     </message>
     <message>
       <source>Select background image</source>
       <translation>Выбрать фоновое изображение</translation>
     </message>
     <message>
-      <source>You need to restart Strawberry for this setting to take affect.</source>
-      <translation>Вам необходимо перезапустить Strawberry, чтобы применить эту настройку.</translation>
-    </message>
-    <message>
       <source>Colors</source>
-      <translation type="unfinished">Colors</translation>
+      <translation>Цвета</translation>
     </message>
     <message>
       <source>&amp;Use the system default color set</source>
-      <translation type="unfinished">&amp;Use the system default color set</translation>
+      <translation>&amp;Использовать системный стандартный набор цветов</translation>
     </message>
     <message>
       <source>Use a custom color set</source>
-      <translation type="unfinished">Use a custom color set</translation>
+      <translation>Использовать свой набор цветов</translation>
     </message>
     <message>
       <source>Set a custom color set suitable for a dark theme</source>
-      <translation type="unfinished">Set a custom color set suitable for a dark theme</translation>
+      <translation>Установить свой набор цветов, подходящий для тёмной темы</translation>
     </message>
     <message>
       <source>Dark mode</source>
-      <translation type="unfinished">Dark mode</translation>
+      <translation>Тёмный режим</translation>
     </message>
     <message>
       <source>Reset the custom color set to the system default colors</source>
-      <translation type="unfinished">Reset the custom color set to the system default colors</translation>
+      <translation>Сбросить пользовательский набор цветов к системным цветам по умолчанию</translation>
     </message>
     <message>
       <source>Reset to default</source>
-      <translation type="unfinished">Reset to default</translation>
+      <translation>Восстановить значения по умолчанию</translation>
+    </message>
+    <message>
+      <source>You might need to restart Strawberry for this setting to fully apply</source>
+      <translation type="unfinished">You might need to restart Strawberry for this setting to fully apply</translation>
+    </message>
+    <message>
+      <source>You need to restart Strawberry for this setting to take affect</source>
+      <translation type="unfinished">You need to restart Strawberry for this setting to take affect</translation>
+    </message>
+    <message>
+      <source>System icons</source>
+      <translation type="unfinished">System icons</translation>
+    </message>
+    <message>
+      <source>Changing colors is only supported with some styles</source>
+      <translation type="unfinished">Changing colors is only supported with some styles</translation>
+    </message>
+    <message>
+      <source>Dark colors</source>
+      <translation type="unfinished">Dark colors</translation>
     </message>
   </context>
   <context>
@@ -668,7 +680,7 @@
     </message>
     <message>
       <source>Use playbin3 when available</source>
-      <translation>Использовать playbin3 при наличии</translation>
+      <translation>Использовать Playbin3 при наличии</translation>
     </message>
     <message>
       <source>Enable HTTP/2 for streaming</source>
