@@ -94,12 +94,18 @@ jobs:
           #!/usr/bin/env bash
           set -euo pipefail
           URL="$1"; shift || true
-          curl -sS \
+          BODY=$(curl -sS \
             --retry "${CURL_RETRIES:-5}" \
             --retry-delay "${CURL_RETRY_DELAY:-2}" \
             --retry-all-errors \
             --max-time "${CURL_MAX_TIME:-120}" \
-            "$@" "$URL"
+            "$@" "$URL")
+          if ! echo "$BODY" | jq -e . >/dev/null 2>&1; then
+            echo "Non-JSON response from ${URL}:" >&2
+            echo "$BODY" | head -3 >&2
+            exit 1
+          fi
+          echo "$BODY"
           EOF
           chmod +x curl_json.sh
 

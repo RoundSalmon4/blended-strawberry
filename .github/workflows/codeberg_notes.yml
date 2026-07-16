@@ -25,8 +25,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Fetch all releases from GitHub (use the provided token)
-          all_releases=$(curl -s -H "Authorization: token ${GH_TOKEN}" \
+          all_releases=$(curl -sS --retry 5 --retry-delay 3 --retry-all-errors --max-time 120 \
+            -H "Authorization: token ${GH_TOKEN}" \
             "https://api.github.com/repos/${{ github.repository }}/releases")
+
+          if ! echo "${all_releases}" | jq -e . >/dev/null 2>&1; then
+            echo "GitHub API returned non-JSON response:"
+            echo "${all_releases}" | head -5
+            exit 1
+          fi
 
           # Store the full JSON for later lookups and a simple list of non-prerelease tags
           echo "${all_releases}" | jq -r '.[] | select(.prerelease == false) | .tag_name' > releases.txt

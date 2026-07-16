@@ -32,8 +32,15 @@ jobs:
         run: |
           set -euo pipefail
 
-          latest_release=$(curl -s -H "Authorization: token ${GH_TOKEN}" \
+          latest_release=$(curl -sS --retry 5 --retry-delay 3 --retry-all-errors --max-time 120 \
+            -H "Authorization: token ${GH_TOKEN}" \
             "https://api.github.com/repos/${{ github.repository }}/releases/latest")
+
+          if ! echo "${latest_release}" | jq -e . >/dev/null 2>&1; then
+            echo "GitHub API returned non-JSON response:"
+            echo "${latest_release}" | head -5
+            exit 1
+          fi
 
           tag_name=$(echo "${latest_release}" | jq -r '.tag_name // empty')
 
