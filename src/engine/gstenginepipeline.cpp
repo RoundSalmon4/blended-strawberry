@@ -1146,6 +1146,8 @@ void GstEnginePipeline::SourceSetupCallback(GstElement *playbin, GstElement *sou
 
   GstEnginePipeline *instance = reinterpret_cast<GstEnginePipeline*>(self);
 
+  qLog(Debug) << "Pipeline" << instance->id() << "source-setup, source element is" << G_OBJECT_TYPE_NAME(source);
+
   {
     QMutexLocker l(&instance->mutex_source_device_);
     if (g_object_class_find_property(G_OBJECT_GET_CLASS(source), "device") && !instance->source_device().isEmpty()) {
@@ -1165,6 +1167,11 @@ void GstEnginePipeline::SourceSetupCallback(GstElement *playbin, GstElement *sou
   if (g_object_class_find_property(G_OBJECT_GET_CLASS(source), "ssl-strict")) {
     qLog(Debug) << "Turning" << (instance->strict_ssl_enabled_.load() ? "on" : "off") << "strict SSL";
     g_object_set(source, "ssl-strict", instance->strict_ssl_enabled_.load() ? TRUE : FALSE, nullptr);
+  }
+
+  if (g_object_class_find_property(G_OBJECT_GET_CLASS(source), "automatic-redirect")) {
+    qLog(Debug) << "Enabling automatic redirect";
+    g_object_set(source, "automatic-redirect", TRUE, nullptr);
   }
 
   {
@@ -1767,13 +1774,6 @@ void GstEnginePipeline::ElementMessageReceived(GstMessage *msg) {
     g_free(detail);
     Q_EMIT Error(id(), static_cast<int>(GST_LIBRARY_ERROR), GST_CORE_ERROR_MISSING_PLUGIN, message, QString());
   }
-  else if (gst_structure_has_name(structure, "redirect")) {
-    const char *uri = gst_structure_get_string(structure, "new-location");
-
-    // Set the redirect URL.  In mmssrc redirect messages come during the initial state change to PLAYING, so callers can pick up this URL after the state change has failed.
-    QMutexLocker l(&mutex_redirect_url_);
-    redirect_url_ = uri;
-  }
 
 }
 
@@ -1809,15 +1809,6 @@ void GstEnginePipeline::ErrorMessageReceived(GstMessage *msg) {
 
   qLog(Error) << __FUNCTION__ << "ID:" << id() << "Domain:" << domain << "Code:" << code << "Error:" << message;
   qLog(Error) << __FUNCTION__ << "ID:" << id() << "Domain:" << domain << "Code:" << code << "Debug:" << debugstr;
-
-  {
-    QMutexLocker l(&mutex_redirect_url_);
-    if (!redirect_url_.isEmpty() && debugstr.contains("A redirect message was posted on the bus and should have been handled by the application."_L1)) {
-      // mmssrc posts a message on the bus *and* makes an error message when it wants to do a redirect.
-      // We handle the message, but now we have to ignore the error too.
-      return;
-    }
-  }
 
 #ifdef Q_OS_WIN32
   // Ignore non-error received for directsoundsink: "IDirectSoundBuffer_GetStatus The operation completed successfully"
