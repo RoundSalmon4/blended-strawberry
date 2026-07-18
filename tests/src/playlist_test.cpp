@@ -27,11 +27,18 @@
 
 #include "collection/collectionplaylistitem.h"
 #include "playlist/playlist.h"
+#include "playlist/songplaylistitem.h"
+#include "tagreader/tagreaderclient.h"
+#include "tagreader/tagreaderreply.h"
+#include "tagreader/tagreaderresult.h"
 #include "mock_settingsprovider.h"
 #include "mock_playlistitem.h"
 
 #include <QtDebug>
 #include <QUndoStack>
+#include <QThread>
+#include <QEventLoop>
+#include <QTimer>
 
 using ::testing::Return;
 
@@ -39,13 +46,26 @@ using namespace Qt::Literals::StringLiterals;
 
 // clazy:excludeall=non-pod-global-static,returning-void-expression
 
-namespace {
-
+// Declared at file scope (rather than inside the anonymous namespace below, where the TEST_F-generated fixture subclasses live) so that Playlist's "friend class PlaylistTest;" resolves to this exact class.
+// C++ friendship isn't inherited, so tests that need access to Playlist's private members go through the CallXxx() helpers below rather than calling them directly from a TEST_F body.
 class PlaylistTest : public ::testing::Test {
  protected:
+  // tagreader_client_/tagreader_client_thread_ are declared (and so, per C++ member initialization order, constructed) before playlist_ below: Playlist::tagreader_client_ is a const member set once at construction time, from the SharedPtr this fixture passes in here - so the real TagReaderClient must already exist by then.
+  // PlaylistItem::Reload() (invoked by ItemReload()'s background task, via SongPlaylistItem/CollectionPlaylistItem) takes that same SharedPtr through Playlist rather than reaching for a process-wide singleton, so constructing and tearing this down per test (like tagreader_test.cpp does) is safe - there is no shared global state left for one test's teardown to leave dangling for another.
   PlaylistTest()
-      : playlist_(nullptr, nullptr, nullptr, nullptr, nullptr, 1),
-        sequence_(nullptr, new DummySettingsProvider) {}
+      : tagreader_client_(new TagReaderClient()),
+        tagreader_client_thread_(new QThread()),
+        playlist_(nullptr, nullptr, nullptr, nullptr, tagreader_client_, 1),
+        sequence_(nullptr, new DummySettingsProvider) {
+    tagreader_client_->moveToThread(tagreader_client_thread_);
+    tagreader_client_thread_->start();
+  }
+
+  ~PlaylistTest() override {
+    tagreader_client_thread_->exit();
+    tagreader_client_thread_->wait(5000);
+    delete tagreader_client_thread_;
+  }
 
   void SetUp() override {
     playlist_.set_sequence(&sequence_);
@@ -65,10 +85,42 @@ class PlaylistTest : public ::testing::Test {
     return PlaylistItemPtr(MakeMockItem(title, artist, album, length));
   }
 
-  Playlist playlist_;  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
-  PlaylistSequence sequence_;  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+  // Forwards to the private Playlist::ItemReloadComplete(), to let tests exercise the save-generation staleness check directly instead of via a real asynchronous write-then-reread round trip.
+  void CallItemReloadComplete(const QPersistentModelIndex &idx, const Song &new_metadata, const bool metadata_edit, const PlaylistItemPtr &item, const quint64 save_generation, const Song &fallback_metadata = Song()) {
+    playlist_.ItemReloadComplete(idx, new_metadata, metadata_edit, item, save_generation, fallback_metadata);
+  }
+
+  // Forwards to the private Playlist::SongSaveComplete(), to let tests exercise the write-failure path directly instead of via a real asynchronous tag write. On failure this now triggers a real (asynchronous) ItemReload(), so callers must pump the event loop (see WaitForEditingFinished()) for the result to apply.
+  void CallSongSaveComplete(TagReaderReplyPtr reply, const QPersistentModelIndex &idx, const PlaylistItemPtr &item, const quint64 save_generation, const Song &pre_edit_metadata) {
+    playlist_.SongSaveComplete(reply, idx, item, save_generation, pre_edit_metadata);
+  }
+
+  // Blocks until Playlist::EditingFinished fires, i.e. until an in-flight ItemReload()'s background reload has completed and ItemReloadComplete() has run.
+  // Bounded by timeout_ms so a regression that stops EditingFinished from firing (or a reload that never completes) fails the test instead of hanging the whole run indefinitely, which would otherwise take down CI.
+  void WaitForEditingFinished(const int timeout_ms = 5000) {
+    QEventLoop loop;
+    QObject::connect(&playlist_, &Playlist::EditingFinished, &loop, &QEventLoop::quit);
+    bool timed_out = false;
+    QTimer::singleShot(timeout_ms, &loop, [&loop, &timed_out]() {
+      timed_out = true;
+      loop.quit();
+    });
+    loop.exec();
+    if (timed_out) {
+      FAIL() << "Timed out after " << timeout_ms << " ms waiting for Playlist::EditingFinished";
+    }
+  }
+
+  // Declaration order matters here: these must precede playlist_ so they are constructed first - see the comment above the constructor.
+  SharedPtr<TagReaderClient> tagreader_client_;
+  QThread *tagreader_client_thread_;
+
+  Playlist playlist_;
+  PlaylistSequence sequence_;
 
 };
+
+namespace {
 
 TEST_F(PlaylistTest, Basic) {
   EXPECT_EQ(0, playlist_.rowCount(QModelIndex()));
@@ -583,6 +635,123 @@ TEST_F(PlaylistTest, TakePreviousRowConsumesHistory) {
 
   // Verify fallback is stable: repeated calls without new history still return the sequence-based previous
   EXPECT_EQ(1, playlist_.take_previous_row(false));
+
+}
+
+// Regression test for a race between two consecutive inline edits to the same playlist item: if the first edit's write-then-reread round trip completes after the second edit's, it must not clobber the second (newer) edit with its own stale result.
+TEST_F(PlaylistTest, StaleReloadCompletionDoesNotClobberNewerEdit) {
+
+  Song song;
+  song.Init(u"Title"_s, u"OriginalArtist"_s, u"Album"_s, 123);
+  song.set_url(QUrl::fromLocalFile(u"/tmp/does-not-need-to-exist.mp3"_s));
+
+  PlaylistItemPtr item = std::make_shared<SongPlaylistItem>(song, false);
+  playlist_.InsertItems(PlaylistItemPtrList() << item, -1);
+  const QPersistentModelIndex idx(playlist_.index(0, static_cast<int>(Playlist::Column::Artist)));
+
+  ASSERT_EQ(u"OriginalArtist"_s, item->OriginalMetadata().artist());
+
+  // Simulate the user making two consecutive edits to the same cell before the first edit's async write-then-reread round trip (see Playlist::setData()) has completed: each edit bumps the item's save generation, exactly as setData() does.
+  const quint64 generation_edit_one = item->BumpSaveGeneration();
+  const quint64 generation_edit_two = item->BumpSaveGeneration();
+  ASSERT_NE(generation_edit_one, generation_edit_two);
+
+  Song metadata_edit_one = item->OriginalMetadata();
+  metadata_edit_one.set_artist(u"EditOneArtist"_s);
+
+  Song metadata_edit_two = item->OriginalMetadata();
+  metadata_edit_two.set_artist(u"EditTwoArtist"_s);
+
+  // The second (newer) edit's reload completes first.
+  CallItemReloadComplete(idx, metadata_edit_two, true, item, generation_edit_two);
+  EXPECT_EQ(u"EditTwoArtist"_s, item->OriginalMetadata().artist());
+
+  // The first edit's reload, started earlier but slower, completes afterwards. Its captured generation no longer matches the item's current generation, so this stale completion must be discarded rather than clobbering the newer edit.
+  CallItemReloadComplete(idx, metadata_edit_one, true, item, generation_edit_one);
+  EXPECT_EQ(u"EditTwoArtist"_s, item->OriginalMetadata().artist());
+
+}
+
+// Regression test: if the tag write itself fails and the subsequent reload also can't read the file (here because it doesn't exist), the optimistic value shown by setData() must fall back to the pre-edit value instead of being left displayed (and later persisted) despite never having been written.
+TEST_F(PlaylistTest, FailedSaveAndFailedReloadFallsBackToPreEditMetadata) {
+
+  Song song;
+  song.Init(u"Title"_s, u"OriginalArtist"_s, u"Album"_s, 123);
+  QTemporaryFile missing_file;
+  ASSERT_TRUE(missing_file.open());
+  const QString missing_path = missing_file.fileName();
+  missing_file.close();
+  ASSERT_TRUE(missing_file.remove());
+  song.set_url(QUrl::fromLocalFile(missing_path));
+  PlaylistItemPtr item = std::make_shared<SongPlaylistItem>(song, false);
+  playlist_.InsertItems(PlaylistItemPtrList() << item, -1);
+  const QPersistentModelIndex idx(playlist_.index(0, static_cast<int>(Playlist::Column::Artist)));
+
+  const Song pre_edit_metadata = item->OriginalMetadata();
+
+  // Simulate setData()'s optimistic update: bump the save generation and apply the edited value immediately, exactly as setData() does before the async write starts.
+  const quint64 save_generation = item->BumpSaveGeneration();
+  Song edited_metadata = pre_edit_metadata;
+  edited_metadata.set_artist(u"EditedArtist"_s);
+  playlist_.UpdateItemMetadata(0, item, edited_metadata, false);
+  ASSERT_EQ(u"EditedArtist"_s, item->OriginalMetadata().artist());
+
+  // The write fails, and since the file doesn't exist, the reload SongSaveComplete() triggers to resync with disk will fail too.
+  TagReaderReplyPtr reply(new TagReaderReply(song.url().toLocalFile()));
+  reply->set_result(TagReaderResult(TagReaderResult::ErrorCode::FileSaveError));
+
+  CallSongSaveComplete(reply, idx, item, save_generation, pre_edit_metadata);
+  WaitForEditingFinished();
+
+  // With no genuine disk state to fall back on, the pre-edit value is the best available: the optimistic edit must not be left displayed (and persisted) despite never having been written to disk.
+  EXPECT_EQ(u"OriginalArtist"_s, item->OriginalMetadata().artist());
+
+}
+
+// Regression test: for consecutive edits to the same item, the metadata restored after a failed write must reflect the actual on-disk state, not just whatever the previous (possibly also-unwritten) optimistic edit happened to leave in place.
+TEST_F(PlaylistTest, FailedSaveReloadsActualDiskStateRatherThanStalePreEditChain) {
+
+  TemporaryResource resource(u":/audio/strawberry.mp3"_s);
+
+  // Establish a known baseline actually on disk.
+  Song baseline;
+  baseline.Init(u"Title"_s, u"RealDiskArtist"_s, u"Album"_s, 123);
+  baseline.set_url(QUrl::fromLocalFile(resource.fileName()));
+  {
+    TagReaderReplyPtr write_reply = tagreader_client_->WriteFileAsync(resource.fileName(), baseline);
+    QEventLoop loop;
+    QObject::connect(&*write_reply, &TagReaderReply::Finished, &loop, &QEventLoop::quit);
+    loop.exec();
+    ASSERT_TRUE(write_reply->success());
+  }
+
+  PlaylistItemPtr item = std::make_shared<SongPlaylistItem>(baseline, false);
+  playlist_.InsertItems(PlaylistItemPtrList() << item, -1);
+  const QPersistentModelIndex idx(playlist_.index(0, static_cast<int>(Playlist::Column::Artist)));
+
+  // Edit 1: optimistically applied, its write is still (conceptually) in flight. Its generation isn't needed here since edit 1's own (still in-flight) completion is never delivered in this test.
+  item->BumpSaveGeneration();
+  Song metadata_edit_one = item->OriginalMetadata();
+  metadata_edit_one.set_artist(u"EditOneArtist"_s);
+  playlist_.UpdateItemMetadata(0, item, metadata_edit_one, false);
+
+  // Edit 2 follows before edit 1's write completes: its pre-edit value is edit 1's optimistic (unconfirmed) artist, not what is genuinely on disk.
+  const Song pre_edit_metadata_two = item->OriginalMetadata();
+  ASSERT_EQ(u"EditOneArtist"_s, pre_edit_metadata_two.artist());
+  const quint64 generation_edit_two = item->BumpSaveGeneration();
+  Song metadata_edit_two = pre_edit_metadata_two;
+  metadata_edit_two.set_artist(u"EditTwoArtist"_s);
+  playlist_.UpdateItemMetadata(0, item, metadata_edit_two, false);
+
+  // Edit 2's write fails.
+  TagReaderReplyPtr reply(new TagReaderReply(resource.fileName()));
+  reply->set_result(TagReaderResult(TagReaderResult::ErrorCode::FileSaveError));
+
+  CallSongSaveComplete(reply, idx, item, generation_edit_two, pre_edit_metadata_two);
+  WaitForEditingFinished();
+
+  // The item must reflect what is genuinely on disk ("RealDiskArtist"), not edit 1's stale, never-confirmed optimistic value ("EditOneArtist") that pre_edit_metadata_two happened to carry.
+  EXPECT_EQ(u"RealDiskArtist"_s, item->OriginalMetadata().artist());
 
 }
 
