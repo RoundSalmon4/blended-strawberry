@@ -77,6 +77,7 @@ macro(add_test_file test_source gui_required)
       PkgConfig::GLIB
       PkgConfig::GOBJECT
       PkgConfig::GSTREAMER_BASE
+      PkgConfig::GSTREAMER_APP
       Qt${QT_VERSION_MAJOR}::Core
       Qt${QT_VERSION_MAJOR}::Concurrent
       Qt${QT_VERSION_MAJOR}::Network
@@ -105,6 +106,7 @@ add_test_file(src/tagreader_test.cpp false)
 add_test_file(src/collectionbackend_test.cpp false)
 add_test_file(src/collectionmodel_test.cpp true)
 add_test_file(src/songplaylistitem_test.cpp false)
+add_test_file(src/m3uparser_test.cpp false)
 add_test_file(src/organizeformat_test.cpp false)
 add_test_file(src/playlist_test.cpp true)
 if(HAVE_WAVEFORM)
