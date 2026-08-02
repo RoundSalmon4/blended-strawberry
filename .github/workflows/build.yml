@@ -60,6 +60,10 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Disable git revision in version string
+        shell: bash
+        run: sed -i 's/set(INCLUDE_GIT_REVISION ON)/set(INCLUDE_GIT_REVISION OFF)/' cmake/Version.cmake
+
       - name: Download macOS dependencies
         run: curl -f -O -L https://github.com/strawberrymusicplayer/strawberry-macos-dependencies/releases/latest/download/strawberry-macos-${{ env.arch }}-${{ env.buildtype }}.tar.xz
 
@@ -153,6 +157,10 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
+
+      - name: Disable git revision in version string
+        shell: bash
+        run: sed -i 's/set(INCLUDE_GIT_REVISION ON)/set(INCLUDE_GIT_REVISION OFF)/' cmake/Version.cmake
 
       - name: Add safe git directory
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
@@ -459,6 +467,10 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
+
+      - name: Disable git revision in version string
+        shell: bash
+        run: sed -i 's/set(INCLUDE_GIT_REVISION ON)/set(INCLUDE_GIT_REVISION OFF)/' cmake/Version.cmake
 
       - name: Add safe git directory
         shell: bash

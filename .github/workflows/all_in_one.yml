@@ -2,7 +2,7 @@
 # BLENDED-STRAWBERRY CI/CD ORCHESTRATOR — QUICK START GUIDE
 #
 # This orchestrator runs these workflows in order:
-#   update → modify_git_revision → build → codeberg → codeberg_release → codeberg_notes → reset_git_revision
+#   update → build → codeberg → codeberg_release → codeberg_notes
 #
 # ---------- GLOBAL VARIABLES (set once in GitHub) ----------
 # Go to: Settings → Secrets and variables → Actions → Variables
@@ -181,30 +181,10 @@ jobs:
             }
             core.setFailed(`Timed out waiting for ${wf} to complete`);
 
-  modify_git_revision:
-    name: B) Modify Git Revision
+  dispatch_build:
+    name: B) build.yml
     runs-on: ubuntu-latest
     needs: dispatch_update
-    steps:
-      - name: "[DRY RUN] Would modify cmake/Version.cmake to set INCLUDE_GIT_REVISION=OFF"
-        if: ${{ env.DRY_RUN == 'true' }}
-        run: echo "[DRY RUN] Would modify cmake/Version.cmake to set INCLUDE_GIT_REVISION=OFF"
-      - name: Checkout repository
-        if: ${{ env.DRY_RUN != 'true' }}
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ env.REF }}
-      - name: Apply change
-        if: ${{ env.DRY_RUN != 'true' }}
-        shell: bash
-        run: |
-          sed -i 's/set(INCLUDE_GIT_REVISION ON)/set(INCLUDE_GIT_REVISION OFF)/' cmake/Version.cmake
-          echo "Modified Version.cmake (no commit/push here)."
-
-  dispatch_build:
-    name: C) build.yml
-    runs-on: ubuntu-latest
-    needs: modify_git_revision
     steps:
       - name: "[DRY RUN] Would dispatch .github/workflows/build.yml on ref ${{ env.REF }}"
         if: ${{ env.DRY_RUN == 'true' }}
@@ -252,7 +232,7 @@ jobs:
             core.setFailed(`Timed out waiting for ${wf} to complete`);
 
   dispatch_codeberg:
-    name: D) codeberg.yml
+    name: C) codeberg.yml
     runs-on: ubuntu-latest
     needs: dispatch_build
     steps:
@@ -291,7 +271,7 @@ jobs:
             core.setFailed(`Timed out waiting for ${wf} to complete`);
 
   dispatch_codeberg_release:
-    name: E) codeberg_release.yml
+    name: D) codeberg_release.yml
     runs-on: ubuntu-latest
     needs: dispatch_codeberg
     steps:
@@ -330,7 +310,7 @@ jobs:
             core.setFailed(`Timed out waiting for ${wf} to complete`);
 
   dispatch_codeberg_notes:
-    name: F) codeberg_notes.yml
+    name: E) codeberg_notes.yml
     runs-on: ubuntu-latest
     needs: dispatch_codeberg_release
     steps:
@@ -368,37 +348,15 @@ jobs:
             }
             core.setFailed(`Timed out waiting for ${wf} to complete`);
 
-  reset_git_revision:
-    name: G) Reset Git Revision
-    runs-on: ubuntu-latest
-    needs: dispatch_codeberg_notes
-    steps:
-      - name: "[DRY RUN] Would restore cmake/Version.cmake to set INCLUDE_GIT_REVISION=ON"
-        if: ${{ env.DRY_RUN == 'true' }}
-        run: echo "[DRY RUN] Would restore cmake/Version.cmake to set INCLUDE_GIT_REVISION=ON"
-      - name: Checkout repository
-        if: ${{ env.DRY_RUN != 'true' }}
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ env.REF }}
-      - name: Apply change
-        if: ${{ env.DRY_RUN != 'true' }}
-        shell: bash
-        run: |
-          sed -i 's/set(INCLUDE_GIT_REVISION OFF)/set(INCLUDE_GIT_REVISION ON)/' cmake/Version.cmake
-          echo "Modified Version.cmake (no commit/push here)."
-
   fail_if_test_mode:
-    name: H) Fail run if TEST_MODE is true
+    name: F) Fail run if TEST_MODE is true
     runs-on: ubuntu-latest
     needs:
       - dispatch_update
-      - modify_git_revision
       - dispatch_build
       - dispatch_codeberg
       - dispatch_codeberg_release
       - dispatch_codeberg_notes
-      - reset_git_revision
     if: always()
     steps:
       - name: Check TEST_MODE and optionally fail
