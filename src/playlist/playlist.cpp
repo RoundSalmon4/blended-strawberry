@@ -74,6 +74,7 @@
 #include "queue/queue.h"
 #include "playlist.h"
 #include "playlistitem.h"
+#include "playlistitemsavedata.h"
 #include "playlistview.h"
 #include "playlistsequence.h"
 #include "playlistbackend.h"
@@ -145,6 +146,8 @@ Playlist::Playlist(const SharedPtr<TaskManager> task_manager,
       tagreader_client_(tagreader_client),
       id_(id),
       favorite_(favorite),
+      save_all_(false),
+      save_last_played_(false),
       current_is_paused_(false),
       current_virtual_index_(-1),
       playlist_sequence_(nullptr),
@@ -473,7 +476,7 @@ bool Playlist::setData(const QModelIndex &idx, const QVariant &value, const int 
     item->SetOriginalMetadata(song);
     Q_EMIT dataChanged(index(row, 0), index(row, ColumnCount - 1));
     Q_EMIT EditingFinished(id_, idx);
-    ScheduleSave();
+    ScheduleSaveItem(item);
   }
 
   return true;
@@ -575,7 +578,7 @@ void Playlist::ReloadItemComplete(const QPersistentModelIndex &idx, PlaylistItem
     Q_EMIT EditingFinished(id_, idx);
   }
 
-  ScheduleSaveAsync();
+  ScheduleSaveItem(item);
 
 }
 
@@ -860,7 +863,7 @@ void Playlist::set_current_row(const int i, const AutoScroll autoscroll, const b
     if (played_indexes_.count() > kMaxPlayedIndexes) {
       played_indexes_.remove(0, played_indexes_.count() - kMaxPlayedIndexes);
     }
-    ScheduleSave();
+    ScheduleSaveLastPlayed();
   }
 
   UpdateScrobblePoint();
@@ -1681,17 +1684,6 @@ void Playlist::SetCurrentIsPaused(const bool paused) {
 
 }
 
-void Playlist::ScheduleSaveAsync() {
-
-  if (QThread::currentThread() == thread()) {
-    ScheduleSave();
-  }
-  else {
-    QMetaObject::invokeMethod(this, &Playlist::ScheduleSave, Qt::QueuedConnection);
-  }
-
-}
-
 void Playlist::ScheduleSave() {
 
   if (is_loading_) return;
@@ -1704,6 +1696,35 @@ void Playlist::ForceScheduleSave() {
 
   if (!playlist_backend_) return;
 
+  save_all_ = true;
+  save_last_played_ = false;
+  save_item_uuids_.clear();
+  timer_save_->start();
+
+}
+
+void Playlist::ScheduleSaveLastPlayed() {
+
+  if (is_loading_ || !playlist_backend_) return;
+
+  // A pending full save already writes the last played row, so there is nothing to add.
+  if (!save_all_) {
+    save_last_played_ = true;
+  }
+
+  timer_save_->start();
+
+}
+
+void Playlist::ScheduleSaveItem(const PlaylistItemPtr &item) {
+
+  if (is_loading_ || !playlist_backend_ || !item) return;
+
+  // A pending full save already covers this row, so there is nothing to add.
+  if (!save_all_) {
+    save_item_uuids_.insert(item->uuid());
+  }
+
   timer_save_->start();
 
 }
@@ -1712,7 +1733,39 @@ void Playlist::Save() {
 
   if (!playlist_backend_ || is_loading_) return;
 
-  playlist_backend_->SavePlaylistAsync(id_, items_, last_played_row(), dynamic_playlist_);
+  // The items are snapshotted here, on the playlist's own thread, rather than handing the items themselves to the database thread:
+  // saving is asynchronous and the model keeps mutating the items (inline tag edits, collection updates, stream metadata) while it runs.
+
+  if (!save_all_) {
+    if (save_last_played_) {
+      save_last_played_ = false;
+      playlist_backend_->SavePlaylistLastPlayedAsync(id_, last_played_row());
+    }
+    // Only the metadata of specific rows changed, so update those in place instead of rewriting the whole playlist.
+    const QSet<QUuid> save_item_uuids = save_item_uuids_;
+    save_item_uuids_.clear();
+    PlaylistItemSaveDataList items_save_data;
+    items_save_data.reserve(save_item_uuids.count());
+    for (const QUuid &uuid : save_item_uuids) {
+      const PlaylistItemPtr item = items_by_uuid_.value(uuid);
+      if (item) items_save_data << item->CreateSaveData();
+    }
+    if (!items_save_data.isEmpty()) {
+      playlist_backend_->SavePlaylistItemsAsync(id_, items_save_data);
+    }
+    return;
+  }
+
+  save_all_ = false;
+  save_last_played_ = false;
+  save_item_uuids_.clear();
+
+  PlaylistItemSaveDataList items_save_data;
+  items_save_data.reserve(items_.count());
+  for (int i = 0; i < items_.count(); i++) {
+    items_save_data << items_.at(i)->CreateSaveData();
+  }
+  playlist_backend_->SavePlaylistAsync(id_, items_save_data, last_played_row(), dynamic_playlist_);
 
 }
 
@@ -2776,7 +2829,7 @@ void Playlist::AlbumCoverLoaded(const Song &song, const AlbumCoverLoaderResult &
     if (item && item->EffectiveMetadata() == song && (!item->EffectiveMetadata().art_manual_is_valid() || (result.type == AlbumCoverLoaderResult::Type::Unset && !item->EffectiveMetadata().art_unset()))) {
       qLog(Debug) << "Updating art manual for local song" << song.title() << song.album() << song.title() << "to" << result.album_cover.cover_url << "in playlist.";
       item->SetArtManual(result.album_cover.cover_url);
-      ScheduleSaveAsync();
+      ScheduleSaveItem(item);
     }
   }
 

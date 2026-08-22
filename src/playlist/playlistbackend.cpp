@@ -49,6 +49,7 @@
 #include "collection/collectionbackend.h"
 #include "tagreader/tagreaderclient.h"
 #include "playlistitem.h"
+#include "playlistitemsavedata.h"
 #include "songplaylistitem.h"
 #include "playlistbackend.h"
 #include "playlistparsers/cueparser.h"
@@ -196,7 +197,7 @@ QString PlaylistBackend::PlaylistItemsQuery() {
 
 }
 
-PlaylistItemPtrList PlaylistBackend::GetPlaylistItems(const int playlist) {
+PlaylistItemPtrList PlaylistBackend::GetPlaylistItems(const int playlist_id) {
 
   PlaylistItemPtrList playlist_items;
 
@@ -208,7 +209,7 @@ PlaylistItemPtrList PlaylistBackend::GetPlaylistItems(const int playlist) {
     // Forward iterations only may be faster
     q.setForwardOnly(true);
     q.prepare(PlaylistItemsQuery());
-    q.BindValue(u":playlist"_s, playlist);
+    q.BindValue(u":playlist"_s, playlist_id);
     if (!q.Exec()) {
       database_->ReportErrors(q);
       return PlaylistItemPtrList();
@@ -230,7 +231,7 @@ PlaylistItemPtrList PlaylistBackend::GetPlaylistItems(const int playlist) {
 
 }
 
-SongList PlaylistBackend::GetPlaylistSongs(const int playlist) {
+SongList PlaylistBackend::GetPlaylistSongs(const int playlist_id) {
 
   SongList songs;
 
@@ -241,7 +242,7 @@ SongList PlaylistBackend::GetPlaylistSongs(const int playlist) {
     // Forward iterations only may be faster
     q.setForwardOnly(true);
     q.prepare(PlaylistItemsQuery());
-    q.BindValue(u":playlist"_s, playlist);
+    q.BindValue(u":playlist"_s, playlist_id);
     if (!q.Exec()) {
       database_->ReportErrors(q);
       return SongList();
@@ -355,18 +356,18 @@ PlaylistItemPtr PlaylistBackend::RestoreCueData(PlaylistItemPtr item, SharedPtr<
 
 }
 
-void PlaylistBackend::SavePlaylistAsync(int playlist, const PlaylistItemPtrList &items, int last_played, PlaylistGeneratorPtr dynamic) {
+void PlaylistBackend::SavePlaylistAsync(const int playlist_id, const PlaylistItemSaveDataList &items, const int last_played, PlaylistGeneratorPtr dynamic) {
 
-  QMetaObject::invokeMethod(this, "SavePlaylist", Qt::QueuedConnection, Q_ARG(int, playlist), Q_ARG(PlaylistItemPtrList, items), Q_ARG(int, last_played), Q_ARG(PlaylistGeneratorPtr, dynamic));
+  QMetaObject::invokeMethod(this, "SavePlaylist", Qt::QueuedConnection, Q_ARG(int, playlist_id), Q_ARG(PlaylistItemSaveDataList, items), Q_ARG(int, last_played), Q_ARG(PlaylistGeneratorPtr, dynamic));
 
 }
 
-void PlaylistBackend::SavePlaylist(int playlist, const PlaylistItemPtrList &items, int last_played, PlaylistGeneratorPtr dynamic) {
+void PlaylistBackend::SavePlaylist(const int playlist_id, const PlaylistItemSaveDataList &items, const int last_played, PlaylistGeneratorPtr dynamic) {
 
   QMutexLocker l(database_->Mutex());
   QSqlDatabase db(database_->Connect());
 
-  qLog(Debug) << "Saving playlist" << playlist;
+  qLog(Debug) << "Saving playlist" << playlist_id;
 
   ScopedTransaction transaction(&db);
 
@@ -374,7 +375,7 @@ void PlaylistBackend::SavePlaylist(int playlist, const PlaylistItemPtrList &item
   {
     SqlQuery q(db);
     q.prepare(u"DELETE FROM playlist_items WHERE playlist = :playlist"_s);
-    q.BindValue(u":playlist"_s, playlist);
+    q.BindValue(u":playlist"_s, playlist_id);
     if (!q.Exec()) {
       database_->ReportErrors(q);
       return;
@@ -382,13 +383,14 @@ void PlaylistBackend::SavePlaylist(int playlist, const PlaylistItemPtrList &item
   }
 
   // Save the new ones
-  for (int i = 0; i < items.count(); ++i) {
-    const PlaylistItemPtr item = items.at(i);
+  for (const PlaylistItemSaveData &item : items) {
     SqlQuery q(db);
     q.prepare(u"INSERT INTO playlist_items (playlist, type, uuid, collection_id, "_s + Song::kColumnSpec + u") VALUES (:playlist, :type, :uuid, :collection_id, "_s + Song::kBindSpec + u")"_s);
-    q.BindValue(u":playlist"_s, playlist);
-    item->BindToQuery(&q);
-
+    q.BindValue(u":playlist"_s, playlist_id);
+    q.BindValue(u":type"_s, static_cast<int>(item.source));
+    q.BindValue(u":uuid"_s, item.uuid.toString(QUuid::WithoutBraces));
+    q.BindValue(u":collection_id"_s, item.collection_id);
+    item.song.BindToQuery(&q);
     if (!q.Exec()) {
       database_->ReportErrors(q);
       return;
@@ -410,7 +412,7 @@ void PlaylistBackend::SavePlaylist(int playlist, const PlaylistItemPtrList &item
       q.BindValue(u":dynamic_data"_s, QByteArray());
       q.BindValue(u":dynamic_backend"_s, QString());
     }
-    q.BindValue(u":playlist"_s, playlist);
+    q.BindValue(u":playlist"_s, playlist_id);
     if (!q.Exec()) {
       database_->ReportErrors(q);
       return;
@@ -418,6 +420,64 @@ void PlaylistBackend::SavePlaylist(int playlist, const PlaylistItemPtrList &item
   }
 
   transaction.Commit();
+
+}
+
+void PlaylistBackend::SavePlaylistItemsAsync(const int playlist_id, const PlaylistItemSaveDataList &items) {
+
+  QMetaObject::invokeMethod(this, "SavePlaylistItems", Qt::QueuedConnection, Q_ARG(int, playlist_id), Q_ARG(PlaylistItemSaveDataList, items));
+
+}
+
+void PlaylistBackend::SavePlaylistItems(const int playlist_id, const PlaylistItemSaveDataList &items) {
+
+  QMutexLocker l(database_->Mutex());
+  QSqlDatabase db(database_->Connect());
+
+  qLog(Debug) << "Saving" << items.count() << "items in playlist" << playlist_id;
+
+  ScopedTransaction transaction(&db);
+
+  // The row order of a playlist is its ROWID order, which an update leaves alone, unlike the delete and re-insert SavePlaylist() does.
+  for (const PlaylistItemSaveData &item : items) {
+    SqlQuery q(db);
+    q.prepare(u"UPDATE playlist_items SET type=:type, collection_id=:collection_id, "_s + Song::kUpdateSpec + u" WHERE playlist=:playlist AND uuid=:uuid"_s);
+    q.BindValue(u":playlist"_s, playlist_id);
+    q.BindValue(u":type"_s, static_cast<int>(item.source));
+    q.BindValue(u":uuid"_s, item.uuid.toString(QUuid::WithoutBraces));
+    q.BindValue(u":collection_id"_s, item.collection_id);
+    item.song.BindToQuery(&q);
+    if (!q.Exec()) {
+      database_->ReportErrors(q);
+      return;
+    }
+  }
+
+  transaction.Commit();
+
+}
+
+void PlaylistBackend::SavePlaylistLastPlayedAsync(const int playlist_id, const int last_played) {
+
+  QMetaObject::invokeMethod(this, "SavePlaylistLastPlayed", Qt::QueuedConnection, Q_ARG(int, playlist_id), Q_ARG(int, last_played));
+
+}
+
+void PlaylistBackend::SavePlaylistLastPlayed(const int playlist_id, const int last_played) {
+
+  QMutexLocker l(database_->Mutex());
+  QSqlDatabase db(database_->Connect());
+
+  qLog(Debug) << "Saving last played" << last_played << "in playlist" << playlist_id;
+
+  SqlQuery q(db);
+  q.prepare(u"UPDATE playlists SET last_played=:last_played WHERE ROWID=:playlist"_s);
+  q.BindValue(u":last_played"_s, last_played);
+  q.BindValue(u":playlist"_s, playlist_id);
+
+  if (!q.Exec()) {
+    database_->ReportErrors(q);
+  }
 
 }
 
