@@ -1,0 +1,66 @@
+name: Upstream Release Watcher
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  check:
+    name: Check for new upstream release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compare upstream release against local and dispatch build
+        uses: actions/github-script@v9
+        env:
+          OWNER: RoundSalmon4
+          REPO: blended-strawberry
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            // Fetch latest release from upstream strawberry
+            const upstream = await github.rest.repos.getLatestRelease({
+              owner: 'strawberrymusicplayer',
+              repo: 'strawberry'
+            });
+            const upstreamTag = upstream.data.tag_name;
+            core.info(`Upstream latest release: ${upstreamTag}`);
+
+            // Fetch latest release from this repo
+            let localTag = 'none';
+            try {
+              const local = await github.rest.repos.getLatestRelease({
+                owner: process.env.OWNER,
+                repo: process.env.REPO
+              });
+              localTag = local.data.tag_name;
+            } catch (e) {
+              if (e.status !== 404) throw e;
+              core.info('No local releases exist yet.');
+            }
+            core.info(`Local latest release:   ${localTag}`);
+
+            if (upstreamTag === localTag) {
+              core.info('Upstream release already built — nothing to do.');
+              return;
+            }
+
+            core.info(`New upstream release detected: ${upstreamTag} (local: ${localTag}).`);
+            core.info('Dispatching all_in_one.yml in production mode...');
+
+            await github.rest.actions.createWorkflowDispatch({
+              owner: process.env.OWNER,
+              repo: process.env.REPO,
+              workflow_id: 'all_in_one.yml',
+              ref: 'master',
+              inputs: {
+                test_mode: 'false',
+                dry_run: 'false'
+              }
+            });
+
+            core.info(`Dispatched all_in_one.yml for ${upstreamTag}.`);
