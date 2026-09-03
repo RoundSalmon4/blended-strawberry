@@ -1,6 +1,6 @@
 /*
  * Strawberry Music Player
- * Copyright 2018-2026, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2026, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,21 +17,16 @@
  *
  */
 
-#ifndef CRYPTUTILS_H
-#define CRYPTUTILS_H
+#ifndef ACOUSTIDSETTINGS_H
+#define ACOUSTIDSETTINGS_H
 
-#include <QByteArray>
-#include <QString>
-#include <QCryptographicHash>
+namespace AcoustidSettings {
 
-namespace Utilities {
+constexpr char kSettingsGroup[] = "AcoustID";
 
-QByteArray Hmac(const QByteArray &key, const QByteArray &data, const QCryptographicHash::Algorithm method);
-QByteArray HmacMd5(const QByteArray &key, const QByteArray &data);
-QByteArray HmacSha256(const QByteArray &key, const QByteArray &data);
-QByteArray HmacSha1(const QByteArray &key, const QByteArray &data);
-QString MaybeDecryptApiCredential(const QString &value);
+constexpr char kUseCustomApiKey[] = "use_custom_api_key";
+constexpr char kApiKey[] = "api_key";
 
-}  // namespace Utilities
+}  // namespace AcoustidSettings
 
-#endif  // CRYPTUTILS_H
+#endif  // ACOUSTIDSETTINGS_H
