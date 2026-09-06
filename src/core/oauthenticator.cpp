@@ -56,7 +56,6 @@ constexpr char kExpiresIn[] = "expires_in";
 constexpr char kLoginTime[] = "login_time";
 constexpr char kUserId[] = "user_id";
 constexpr char kCountryCode[] = "country_code";
-constexpr int kMaxPortInc = 20;
 }  // namespace
 
 OAuthenticator::OAuthenticator(const SharedPtr<NetworkAccessManager> network, QObject *parent)
@@ -65,7 +64,8 @@ OAuthenticator::OAuthenticator(const SharedPtr<NetworkAccessManager> network, QO
       timer_refresh_login_(new QTimer(this)),
       type_(Type::Authorization_Code),
       use_local_redirect_server_(true),
-      random_port_(true),
+      port_type_(PortType::SetToRedirectURL),
+      use_pkce_(true),
       expires_in_(0LL),
       login_time_(0LL),
       user_id_(0) {
@@ -140,9 +140,15 @@ void OAuthenticator::set_use_local_redirect_server(const bool use_local_redirect
 
 }
 
-void OAuthenticator::set_random_port(const bool random_port) {
+void OAuthenticator::set_port_type(const PortType port_type) {
 
-  random_port_ = random_port;
+  port_type_ = port_type;
+
+}
+
+void OAuthenticator::set_use_pkce(const bool use_pkce) {
+
+  use_pkce_ = use_pkce;
 
 }
 
@@ -228,6 +234,33 @@ void OAuthenticator::StartRefreshLoginTimer() {
 
 }
 
+QUrl OAuthenticator::EffectiveRedirectUrl() const {
+
+  QUrl redirect_url(redirect_url_);
+
+  if (!local_redirect_server_.isNull()) {
+    switch (port_type_) {
+      case PortType::SetToRedirectURL:{
+        redirect_url.setPort(local_redirect_server_->port());
+        break;
+      }
+      case PortType::PassAsUrlParam:{
+        QUrlQuery redirect_url_query(redirect_url);
+        redirect_url_query.addQueryItem(u"port"_s, QString::number(local_redirect_server_->port()));
+        redirect_url.setQuery(redirect_url_query);
+        break;
+      }
+      case PortType::PassInState:{
+        // The port travels in the "state" parameter instead.
+        break;
+      }
+    }
+  }
+
+  return redirect_url;
+
+}
+
 void OAuthenticator::Authenticate() {
 
   if (client_id_.isEmpty()) {
@@ -244,44 +277,46 @@ void OAuthenticator::Authenticate() {
     return;
   }
 
-  QUrl redirect_url(redirect_url_);
+  if (!redirect_url_.isValid()) {
+    Q_EMIT AuthenticationFinished(false, tr("Invalid redirect URL"));
+    return;
+  }
 
   if (use_local_redirect_server_) {
     local_redirect_server_.reset(new LocalRedirectServer(this));
-    bool success = false;
-    if (random_port_) {
-      success = local_redirect_server_->Listen();
-    }
-    else {
-      const int max_port = redirect_url.port() + kMaxPortInc;
-      for (int port = redirect_url.port(); port < max_port; ++port) {
-        local_redirect_server_->set_port(port);
-        if (local_redirect_server_->Listen()) {
-          success = true;
-          break;
-        }
-      }
-    }
+    const bool success = local_redirect_server_->Listen();
     if (!success) {
       Q_EMIT AuthenticationFinished(false, local_redirect_server_->error());
       local_redirect_server_.reset();
       return;
     }
     QObject::connect(&*local_redirect_server_, &LocalRedirectServer::Finished, this, &OAuthenticator::RedirectArrived);
-    redirect_url.setPort(local_redirect_server_->port());
   }
 
-  code_verifier_ = Utilities::CryptographicRandomString(44);
-  code_challenge_ = QString::fromLatin1(QCryptographicHash::hash(code_verifier_.toUtf8(), QCryptographicHash::Sha256).toBase64(QByteArray::Base64UrlEncoding));
-  if (code_challenge_.lastIndexOf(u'=') == code_challenge_.length() - 1) {
-    code_challenge_.chop(1);
+  const QUrl redirect_url = EffectiveRedirectUrl();
+
+  state_ = Utilities::CryptographicRandomString(32);
+  if (port_type_ == PortType::PassInState && !local_redirect_server_.isNull()) {
+    state_ += u'-' + QString::number(local_redirect_server_->port());
+  }
+
+  if (use_pkce_) {
+    code_verifier_ = Utilities::CryptographicRandomString(44);
+    code_challenge_ = QString::fromLatin1(QCryptographicHash::hash(code_verifier_.toUtf8(), QCryptographicHash::Sha256).toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
+  }
+  else {
+    code_verifier_.clear();
+    code_challenge_.clear();
   }
 
   ParamList params = ParamList() << Param(u"response_type"_s, u"code"_s)
                                  << Param(u"redirect_uri"_s, redirect_url.toString())
-                                 << Param(u"state"_s, code_challenge_)
-                                 << Param(u"code_challenge_method"_s, u"S256"_s)
-                                 << Param(u"code_challenge"_s, code_challenge_);
+                                 << Param(u"state"_s, state_);
+
+  if (use_pkce_) {
+    params << Param(u"code_challenge_method"_s, u"S256"_s)
+           << Param(u"code_challenge"_s, code_challenge_);
+  }
 
   if (!client_id_.isEmpty()) {
     params << Param(u"client_id"_s, client_id_);
@@ -317,9 +352,7 @@ void OAuthenticator::RedirectArrived() {
   }
 
   if (local_redirect_server_->success()) {
-    QUrl redirect_url(redirect_url_);
-    redirect_url.setPort(local_redirect_server_->port());
-    AuthorizationUrlReceived(local_redirect_server_->request_url(), redirect_url);
+    AuthorizationUrlReceived(local_redirect_server_->request_url(), EffectiveRedirectUrl());
   }
   else {
     Q_EMIT AuthenticationFinished(false, local_redirect_server_->error());
@@ -369,8 +402,8 @@ void OAuthenticator::AuthorizationUrlReceived(const QUrl &request_url, const QUr
     return;
   }
 
-  if (url_query.queryItemValue(u"state"_s) != code_challenge_) {
-    Q_EMIT AuthenticationFinished(false, tr("Request URL has wrong state %1 != %2").arg(url_query.queryItemValue(u"state"_s), code_challenge_));
+  if (url_query.queryItemValue(u"state"_s) != state_) {
+    Q_EMIT AuthenticationFinished(false, tr("Request URL has wrong state %1 != %2").arg(url_query.queryItemValue(u"state"_s), state_));
     return;
   }
 
