@@ -25,7 +25,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QGroupBox" name="api_credential_group">
+    <widget class="QGroupBox" name="groupbox_api_credentials">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
        <horstretch>0</horstretch>
@@ -33,9 +33,9 @@
       </sizepolicy>
      </property>
      <property name="title">
-      <string>API credentials</string>
+      <string>API Credentials</string>
      </property>
-     <layout class="QFormLayout" name="layout_credential_group">
+     <layout class="QFormLayout" name="layout_api_credentials">
       <item row="0" column="0">
        <widget class="QCheckBox" name="checkbox_use_custom_api_key">
         <property name="text">

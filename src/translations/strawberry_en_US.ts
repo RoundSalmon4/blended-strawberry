@@ -93,15 +93,15 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>API credentials</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Use custom API Key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>API key</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>API Credentials</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -4276,6 +4276,10 @@ If there are no matches then it will use the largest image in the directory.</so
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Invalid redirect URL</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Authentication</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5867,10 +5871,6 @@ Are you sure you want to continue?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Authentication</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>App ID</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5919,15 +5919,15 @@ Are you sure you want to continue?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Missing app id. Please fetch credentials first.</source>
+        <source>Missing app id. Please fetch API credentials first.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Missing app secret. Please fetch credentials first.</source>
+        <source>Missing app secret. Please fetch API credentials first.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Missing private key. Please fetch credentials first.</source>
+        <source>Missing private key. Please fetch API credentials first.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -5939,19 +5939,15 @@ Are you sure you want to continue?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Credentials fetched</source>
+        <source>API credentials fetched</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Credentials have been successfully fetched. Click Login to authenticate via your browser.</source>
+        <source>API credentials have been successfully fetched. Click Login to authenticate via your browser.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Credential fetch failed</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Fetch Credentials</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -5964,6 +5960,14 @@ Are you sure you want to continue?</source>
     </message>
     <message>
         <source>Automatically fetch app ID, app secret and private key from Qobuz web player</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>API Credentials</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fetch API Credentials</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -6951,10 +6955,6 @@ Are you sure you want to continue?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Basic authentication</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Authenticate</source>
         <translation type="unfinished"></translation>
     </message>
@@ -7016,6 +7016,10 @@ Are you sure you want to continue?</source>
     </message>
     <message>
         <source>Client secret</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>API Credentials</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -7452,10 +7456,6 @@ Are you sure you want to continue?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Authentication</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Client ID</source>
         <translation type="unfinished"></translation>
     </message>
@@ -7529,6 +7529,10 @@ Are you sure you want to continue?</source>
     </message>
     <message>
         <source>Use custom client ID</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>API Credentials</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

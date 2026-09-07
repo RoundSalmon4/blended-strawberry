@@ -1525,7 +1525,7 @@ optional_source(HAVE_QOBUZ
     src/qobuz/qobuzstreamurlrequest.cpp
     src/qobuz/qobuzfavoriterequest.cpp
     src/qobuz/qobuzmetadatarequest.cpp
-    src/qobuz/qobuzcredentialfetcher.cpp
+    src/qobuz/qobuzapicredentialfetcher.cpp
     src/settings/qobuzsettingspage.cpp
     src/covermanager/qobuzcoverprovider.cpp
   HEADERS
@@ -1536,7 +1536,7 @@ optional_source(HAVE_QOBUZ
     src/qobuz/qobuzstreamurlrequest.h
     src/qobuz/qobuzfavoriterequest.h
     src/qobuz/qobuzmetadatarequest.h
-    src/qobuz/qobuzcredentialfetcher.h
+    src/qobuz/qobuzapicredentialfetcher.h
     src/settings/qobuzsettingspage.h
     src/covermanager/qobuzcoverprovider.h
   UI

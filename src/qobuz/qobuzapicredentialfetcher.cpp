@@ -1,0 +1,311 @@
+/*
+ * Strawberry Music Player
+ * Copyright 2019-2026, Jonas Kvinge <jonas@jkvinge.net>
+ *
+ * Strawberry is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Strawberry is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Strawberry.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+#include "config.h"
+
+#include <QByteArray>
+#include <QMap>
+#include <QPair>
+#include <QString>
+#include <QStringList>
+#include <QUrl>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QRegularExpression>
+#include <QRegularExpressionMatch>
+#include <QRegularExpressionMatchIterator>
+
+#include "includes/shared_ptr.h"
+#include "core/logging.h"
+#include "core/networkaccessmanager.h"
+#include "qobuzapicredentialfetcher.h"
+
+using namespace Qt::Literals::StringLiterals;
+
+namespace {
+constexpr char kLoginPageUrl[] = "https://play.qobuz.com/login";
+constexpr char kPlayQobuzUrl[] = "https://play.qobuz.com";
+constexpr char kUserAgent[] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+}  // namespace
+
+QobuzApiCredentialFetcher::QobuzApiCredentialFetcher(const SharedPtr<NetworkAccessManager> network, QObject *parent)
+    : QObject(parent),
+      network_(network),
+      login_page_reply_(nullptr),
+      bundle_reply_(nullptr) {}
+
+void QobuzApiCredentialFetcher::FetchApiCredentials() {
+
+  qLog(Debug) << "Qobuz: Fetching API credentials from web player";
+
+  QNetworkRequest request(QUrl(QString::fromLatin1(kLoginPageUrl)));
+  request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+  request.setHeader(QNetworkRequest::UserAgentHeader, QLatin1String(kUserAgent));
+
+  login_page_reply_ = network_->get(request);
+  QObject::connect(login_page_reply_, &QNetworkReply::finished, this, &QobuzApiCredentialFetcher::LoginPageReceived);
+
+}
+
+void QobuzApiCredentialFetcher::LoginPageReceived() {
+
+  if (!login_page_reply_) return;
+
+  QNetworkReply *reply = login_page_reply_;
+  login_page_reply_ = nullptr;
+
+  if (reply->error() != QNetworkReply::NoError) {
+    QString error = QStringLiteral("Failed to fetch login page: %1").arg(reply->errorString());
+    qLog(Error) << "Qobuz:" << error;
+    reply->deleteLater();
+    Q_EMIT ApiCredentialsFetchError(error);
+    return;
+  }
+
+  const QString login_page = QString::fromUtf8(reply->readAll());
+  reply->deleteLater();
+
+  // Extract bundle.js URL from the login page
+  // Pattern: <script src="(/resources/\d+\.\d+\.\d+-[a-z]\d{3}/bundle\.js)"></script>
+  static const QRegularExpression bundle_url_regex(u"<script src=\"(/resources/[\\d.]+-[a-z]\\d+/bundle\\.js)\"></script>"_s);
+  const QRegularExpressionMatch bundle_match = bundle_url_regex.match(login_page);
+
+  if (!bundle_match.hasMatch()) {
+    QString error = u"Failed to find bundle.js URL in login page"_s;
+    qLog(Error) << "Qobuz:" << error;
+    Q_EMIT ApiCredentialsFetchError(error);
+    return;
+  }
+
+  bundle_url_ = bundle_match.captured(1);
+  qLog(Debug) << "Qobuz: Found bundle URL:" << bundle_url_;
+
+  // Fetch the bundle.js
+  QNetworkRequest request(QUrl(QString::fromLatin1(kPlayQobuzUrl) + bundle_url_));
+  request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+  request.setHeader(QNetworkRequest::UserAgentHeader, QLatin1String(kUserAgent));
+
+  bundle_reply_ = network_->get(request);
+  QObject::connect(bundle_reply_, &QNetworkReply::finished, this, &QobuzApiCredentialFetcher::BundleReceived);
+
+}
+
+void QobuzApiCredentialFetcher::BundleReceived() {
+
+  if (!bundle_reply_) return;
+
+  QNetworkReply *reply = bundle_reply_;
+  bundle_reply_ = nullptr;
+
+  if (reply->error() != QNetworkReply::NoError) {
+    QString error = QStringLiteral("Failed to fetch bundle.js: %1").arg(reply->errorString());
+    qLog(Error) << "Qobuz:" << error;
+    reply->deleteLater();
+    Q_EMIT ApiCredentialsFetchError(error);
+    return;
+  }
+
+  const QString bundle = QString::fromUtf8(reply->readAll());
+  reply->deleteLater();
+
+  qLog(Debug) << "Qobuz: Bundle size:" << bundle.length();
+
+  const QString app_id = ExtractAppId(bundle);
+  if (app_id.isEmpty()) {
+    QString error = u"Failed to extract app_id from bundle"_s;
+    qLog(Error) << "Qobuz:" << error;
+    Q_EMIT ApiCredentialsFetchError(error);
+    return;
+  }
+
+  const QString app_secret = ExtractAppSecret(bundle);
+  if (app_secret.isEmpty()) {
+    QString error = u"Failed to extract app_secret from bundle"_s;
+    qLog(Error) << "Qobuz:" << error;
+    Q_EMIT ApiCredentialsFetchError(error);
+    return;
+  }
+
+  const QString login_app_id = ExtractLoginAppId(bundle);
+  const QString private_key = ExtractPrivateKey(bundle);
+  qLog(Debug) << "Qobuz: Successfully extracted API credentials - app_id:" << app_id << "login_app_id:" << login_app_id << "private_key:" << !private_key.isEmpty();
+  Q_EMIT ApiCredentialsFetched(app_id, app_secret, login_app_id, private_key);
+
+}
+
+QString QobuzApiCredentialFetcher::ExtractAppId(const QString &bundle) {
+
+  // Extract the production app_id used for API request signing.
+  static const QRegularExpression app_id_regex(u"production:\\{api:\\{appId:\"(\\d+)\""_s);
+  const QRegularExpressionMatch app_id_match = app_id_regex.match(bundle);
+
+  if (app_id_match.hasMatch()) {
+    return app_id_match.captured(1);
+  }
+
+  return QString();
+
+}
+
+QString QobuzApiCredentialFetcher::ExtractLoginAppId(const QString &bundle) {
+
+  // The production app_id is blocked at the Qobuz API gateway for /user/login.
+  // A standalone {appId:"<id>"} object (8-10 digits, no appSecret alongside) is used exclusively for login authentication.
+  static const QRegularExpression login_app_id_regex(u"\\{appId:\"(\\d{8,10})\"\\}"_s);
+  const QRegularExpressionMatch login_app_id_match = login_app_id_regex.match(bundle);
+
+  if (login_app_id_match.hasMatch()) {
+    return login_app_id_match.captured(1);
+  }
+
+  return QString();
+
+}
+
+QString QobuzApiCredentialFetcher::ExtractAppSecret(const QString &bundle) {
+
+  // The plain-text appSecret in the bundle doesn't work for API requests.
+  // We need to use the Spoofbuz method to extract the real secrets:
+  // 1. Find seed/timezone pairs
+  // 2. Find info/extras for each timezone
+  // 3. Combine seed + info + extras, remove last 44 chars, base64 decode
+
+  // Pattern to find seed and timezone: [a-z].initialSeed("seed",window.utimezone.timezone)
+  static const QRegularExpression seed_regex(u"[a-z]\\.initialSeed\\(\"([\\w=]+)\",window\\.utimezone\\.([a-z]+)\\)"_s);
+
+  QMap<QString, QString> seeds;  // timezone -> seed
+  QRegularExpressionMatchIterator seed_iter = seed_regex.globalMatch(bundle);
+  while (seed_iter.hasNext()) {
+    const QRegularExpressionMatch seed_match = seed_iter.next();
+    const QString seed = seed_match.captured(1);
+    const QString tz = seed_match.captured(2);
+    seeds[tz] = seed;
+    qLog(Debug) << "Qobuz: Found seed for timezone" << tz;
+  }
+
+  if (seeds.isEmpty()) {
+    qLog(Error) << "Qobuz: No seed/timezone pairs found in bundle";
+    return QString();
+  }
+
+  // Pattern to find info and extras for each timezone: name:"xxx/Berlin",info:"...",extras:"..."
+  static const QRegularExpression info_regex(u"name:\"\\w+/(\\w+)\",info:\"([\\w=]+)\",extras:\"([\\w=]+)\""_s);
+
+  QMap<QString, QPair<QString, QString>> infos;  // timezone -> info, extras
+  QRegularExpressionMatchIterator info_iter = info_regex.globalMatch(bundle);
+  while (info_iter.hasNext()) {
+    const QRegularExpressionMatch info_match = info_iter.next();
+    infos[info_match.captured(1).toLower()] = qMakePair(info_match.captured(2), info_match.captured(3));
+  }
+
+  // Try each timezone - Berlin was confirmed working
+  const QStringList preferred_order = {u"berlin"_s, u"london"_s, u"abidjan"_s};
+
+  for (const QString &tz : preferred_order) {
+    if (!seeds.contains(tz)) {
+      continue;
+    }
+
+    if (!infos.contains(tz)) {
+      qLog(Debug) << "Qobuz: No info/extras found for timezone" << tz;
+      continue;
+    }
+
+    const QString seed = seeds[tz];
+    const QString info = infos[tz].first;
+    const QString extras = infos[tz].second;
+
+    qLog(Debug) << "Qobuz: Decoding secret for timezone" << tz;
+
+    // Combine seed + info + extras
+    const QString combined = seed + info + extras;
+
+    // Remove last 44 characters
+    if (combined.length() <= 44) {
+      qLog(Debug) << "Qobuz: Combined string too short for timezone" << tz;
+      continue;
+    }
+    const QString trimmed = combined.left(combined.length() - 44);
+
+    // Base64 decode
+    const QByteArray decoded = QByteArray::fromBase64(trimmed.toLatin1());
+    const QString secret = QString::fromLatin1(decoded);
+
+    // Validate: should be 32 hex characters
+    static const QRegularExpression hex_regex(u"^[a-f0-9]{32}$"_s);
+    if (hex_regex.match(secret).hasMatch()) {
+      qLog(Debug) << "Qobuz: Successfully decoded secret from timezone" << tz;
+      return secret;
+    }
+
+    qLog(Debug) << "Qobuz: Decoded secret invalid for timezone" << tz;
+  }
+
+  // Try any remaining timezones not in preferred order
+  for (auto it = seeds.constBegin(); it != seeds.constEnd(); ++it) {
+    const QString &tz = it.key();
+    if (tz.isEmpty() || preferred_order.contains(tz)) {
+      continue;  // Already tried
+    }
+
+    if (!infos.contains(tz)) {
+      continue;
+    }
+
+    const QString seed = it.value();
+    const QString info = infos[tz].first;
+    const QString extras = infos[tz].second;
+
+    const QString combined = seed + info + extras;
+    if (combined.length() <= 44) {
+      continue;
+    }
+    const QString trimmed = combined.left(combined.length() - 44);
+
+    const QByteArray decoded = QByteArray::fromBase64(trimmed.toLatin1());
+    const QString secret = QString::fromLatin1(decoded);
+
+    static const QRegularExpression hex_regex(u"^[a-f0-9]{32}$"_s);
+    if (hex_regex.match(secret).hasMatch()) {
+      qLog(Debug) << "Qobuz: Successfully decoded secret from timezone" << tz;
+      return secret;
+    }
+  }
+
+  qLog(Error) << "Qobuz: Failed to decode any valid app_secret from bundle";
+  return QString();
+
+}
+
+QString QobuzApiCredentialFetcher::ExtractPrivateKey(const QString &bundle) {
+
+  // Extract the private key used for OAuth callback token exchange.
+  // In the bundle it appears as: privateKey:"6lz8C03UDIC7"
+  static const QRegularExpression private_key_regex(u"privateKey:\"([A-Za-z0-9]+)\""_s);
+  const QRegularExpressionMatch match = private_key_regex.match(bundle);
+
+  if (match.hasMatch()) {
+    qLog(Debug) << "Qobuz: Found private_key in bundle";
+    return match.captured(1);
+  }
+
+  qLog(Debug) << "Qobuz: private_key not found in bundle";
+  return QString();
+
+}

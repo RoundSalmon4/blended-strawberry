@@ -17,50 +17,45 @@
  *
  */
 
-#ifndef QOBUZSETTINGSPAGE_H
-#define QOBUZSETTINGSPAGE_H
+#ifndef QOBUZAPICREDENTIALFETCHER_H
+#define QOBUZAPICREDENTIALFETCHER_H
+
+#include "config.h"
 
 #include <QObject>
 #include <QString>
 
 #include "includes/shared_ptr.h"
-#include "settings/settingspage.h"
 
-class QShowEvent;
-class QEvent;
-class SettingsDialog;
-class QobuzService;
-class QobuzApiCredentialFetcher;
-class Ui_QobuzSettingsPage;
+class QNetworkReply;
+class NetworkAccessManager;
 
-class QobuzSettingsPage : public SettingsPage {
+class QobuzApiCredentialFetcher : public QObject {
   Q_OBJECT
 
  public:
-  explicit QobuzSettingsPage(SettingsDialog *dialog, const SharedPtr<QobuzService> service, QWidget *parent = nullptr);
-  ~QobuzSettingsPage() override;
+  explicit QobuzApiCredentialFetcher(const SharedPtr<NetworkAccessManager> network, QObject *parent = nullptr);
 
-  void Load() override;
-  void Save() override;
+  void FetchApiCredentials();
 
-  bool eventFilter(QObject *object, QEvent *event) override;
-
- protected:
-  void showEvent(QShowEvent *e) override;
-
- private Q_SLOTS:
-  void LoginClicked();
-  void LogoutClicked();
-  void LoginSuccess();
-  void LoginFailure(const QString &failure_reason);
-  void FetchApiCredentialsClicked();
+ Q_SIGNALS:
   void ApiCredentialsFetched(const QString &app_id, const QString &app_secret, const QString &login_app_id, const QString &private_key);
   void ApiCredentialsFetchError(const QString &error);
 
+ private Q_SLOTS:
+  void LoginPageReceived();
+  void BundleReceived();
+
  private:
-  Ui_QobuzSettingsPage *ui_;
-  const SharedPtr<QobuzService> service_;
-  QobuzApiCredentialFetcher *api_credential_fetcher_;
+  static QString ExtractAppId(const QString &bundle);
+  static QString ExtractLoginAppId(const QString &bundle);
+  static QString ExtractAppSecret(const QString &bundle);
+  static QString ExtractPrivateKey(const QString &bundle);
+
+  const SharedPtr<NetworkAccessManager> network_;
+  QNetworkReply *login_page_reply_;
+  QNetworkReply *bundle_reply_;
+  QString bundle_url_;
 };
 
-#endif  // QOBUZSETTINGSPAGE_H
+#endif  // QOBUZAPICREDENTIALFETCHER_H
