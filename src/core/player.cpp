@@ -2,7 +2,7 @@
  * Strawberry Music Player
  * This file was part of Clementine.
  * Copyright 2010, David Sansome <me@davidsansome.com>
- * Copyright 2018-2021, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2018-2026, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -90,14 +90,14 @@ Player::Player(const SharedPtr<TaskManager> task_manager, const SharedPtr<UrlHan
       last_state_(EngineBase::State::Empty),
       nb_errors_received_(0),
       volume_(100),
-      volume_before_mute_(100),
       last_pressed_previous_(QDateTime::currentDateTime()),
       continue_on_error_(false),
       greyout_(true),
       menu_previousmode_(BehaviourSettings::PreviousBehaviour::DontRestart),
       seek_step_sec_(10),
       volume_increment_(5),
-      play_offset_nanosec_(0) {
+      play_offset_nanosec_(0),
+      play_end_sec_(0) {
 
   setObjectName(QLatin1String(QObject::metaObject()->className()));
 
@@ -126,6 +126,7 @@ void Player::Init() {
   QObject::connect(&*engine_, &EngineBase::TrackEnded, this, &Player::TrackEnded);
   QObject::connect(&*engine_, &EngineBase::MetaData, this, &Player::EngineMetadataReceived);
   QObject::connect(&*engine_, &EngineBase::VolumeChanged, this, &Player::SetVolumeFromEngine);
+  QObject::connect(&*engine_, &EngineBase::MuteChanged, this, &Player::SetMuteFromEngine);
 
   // Equalizer
   QObject::connect(&*equalizer_, &Equalizer::StereoBalancerEnabledChanged, &*engine_, &EngineBase::SetStereoBalancerEnabled);
@@ -395,6 +396,20 @@ void Player::HandleLoadResult(const UrlHandler::LoadResult &result) {
 }
 
 void Player::Next() { NextInternal(EngineBase::TrackChangeType::Manual, Playlist::AutoScroll::Always); }
+
+void Player::EndPositionNext(const int position) {
+
+  if (play_end_sec_ <= 0 || play_end_sec_ > position) return;
+
+  // Re-check the live repeat mode rather than trusting the value latched when the scan window was computed in PlayAt(): the user may have switched away from Scan mode while this track was playing.
+  if (playlist_manager_->active()->RepeatMode() != PlaylistSequence::RepeatMode::Scan) {
+    play_end_sec_ = 0;
+    return;
+  }
+
+  NextInternal(EngineBase::TrackChangeType::Scan, Playlist::AutoScroll::Always);
+
+}
 
 void Player::NextInternal(const EngineBase::TrackChangeFlags change, const Playlist::AutoScroll autoscroll) {
 
@@ -692,6 +707,9 @@ void Player::SetVolumeFromSlider(const int value) {
     timer_save_volume_->start();
   }
 
+  // The user is adjusting the volume, so it shouldn't stay muted regardless of the resulting level (including zero).
+  SetMuted(false);
+
 }
 
 void Player::SetVolumeFromEngine(const uint volume) {
@@ -705,6 +723,10 @@ void Player::SetVolumeFromEngine(const uint volume) {
 
 }
 
+void Player::SetMuteFromEngine(const bool mute) {
+  Q_EMIT MuteChanged(mute);
+}
+
 void Player::SetVolume(const uint volume) {
 
   const uint new_volume = qBound(0U, volume, 100U);
@@ -714,6 +736,9 @@ void Player::SetVolume(const uint volume) {
     Q_EMIT VolumeChanged(new_volume);
     timer_save_volume_->start();
   }
+
+  // The volume is being explicitly (re)set, so it shouldn't stay muted regardless of the resulting level (including zero).
+  SetMuted(false);
 
 }
 
@@ -756,7 +781,25 @@ void Player::PlayAt(const int index, const bool pause, const quint64 offset_nano
     return;
   }
 
-  current_item_ = playlist_manager_->active()->current_item();
+  Playlist *active_playlist = playlist_manager_->active();
+  current_item_ = active_playlist->current_item();
+
+  // play_offset_nanosec_ was already set to offset_nanosec above, and is only raised here if it's too low for the scan requirements.
+  play_end_sec_ = 0;
+
+  if (active_playlist->RepeatMode() == PlaylistSequence::RepeatMode::Scan && active_playlist->HalfPlayingTimeS() > 0) {
+    const Song &current_song = current_item_->EffectiveMetadata();
+    const qint64 middle_time_ns = (current_song.length_nanosec() * active_playlist->PercentInterestSong()) / 100;
+    const qint64 start_time_ns = middle_time_ns - (static_cast<qint64>(active_playlist->HalfPlayingTimeS()) * 1'000'000'000L);
+    const qint64 end_time_s = (middle_time_ns + (static_cast<qint64>(active_playlist->HalfPlayingTimeS()) * 1'000'000'000L)) / 1'000'000'000L;
+    if (start_time_ns > static_cast<qint64>(play_offset_nanosec_)) {
+      play_offset_nanosec_ = static_cast<quint64>(start_time_ns);
+    }
+    if (end_time_s < (current_song.length_nanosec() / 1'000'000'000L)) {
+      play_end_sec_ = end_time_s;
+    }
+  }
+
   const QUrl url = current_item_->EffectiveUrl();
 
   if (url_handlers_->CanHandle(url)) {
@@ -772,8 +815,8 @@ void Player::PlayAt(const int index, const bool pause, const quint64 offset_nano
     HandleLoadResult(url_handler->StartLoading(url));
   }
   else {
-    qLog(Debug) << "Playing song" << current_item_->EffectiveMetadata().title() << url << "position" << offset_nanosec;
-    engine_->Play(current_item_->OriginalUrl(), url, pause, change, current_item_->EffectiveMetadata().has_cue(), static_cast<quint64>(current_item_->effective_beginning_nanosec()), current_item_->effective_end_nanosec(), offset_nanosec, current_item_->EffectiveMetadata().ebur128_integrated_loudness_lufs());
+    qLog(Debug) << "Playing song" << current_item_->EffectiveMetadata().title() << url << "position" << play_offset_nanosec_;
+    engine_->Play(current_item_->OriginalUrl(), url, pause, change, current_item_->EffectiveMetadata().has_cue(), static_cast<quint64>(current_item_->effective_beginning_nanosec()), current_item_->effective_end_nanosec(), play_offset_nanosec_, current_item_->EffectiveMetadata().ebur128_integrated_loudness_lufs());
   }
 
 }
@@ -855,15 +898,16 @@ PlaylistItemPtr Player::GetItemAt(const int pos) const {
 
 void Player::Mute() {
 
-  const uint current_volume = engine_->volume();
+  SetMuted(!engine_->is_muted());
 
-  if (current_volume == 0) {
-    SetVolume(volume_before_mute_);
-  }
-  else {
-    volume_before_mute_ = current_volume;
-    SetVolume(0);
-  }
+}
+
+void Player::SetMuted(const bool mute) {
+
+  if (mute == engine_->is_muted()) return;
+
+  engine_->SetMute(mute);
+  Q_EMIT MuteChanged(mute);
 
 }
 

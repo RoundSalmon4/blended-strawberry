@@ -203,7 +203,7 @@ bool GstEngine::Load(const QUrl &media_url, const QUrl &stream_url, const Engine
 
   const GstUrl gst_url = FixupUrl(stream_url);
 
-  bool crossfade = current_pipeline_ && ((crossfade_enabled_ && change & EngineBase::TrackChangeType::Manual) || (autocrossfade_enabled_ && change & EngineBase::TrackChangeType::Auto) || ((crossfade_enabled_ || autocrossfade_enabled_) && change & EngineBase::TrackChangeType::Intro));
+  bool crossfade = current_pipeline_ && ((crossfade_enabled_ && change & EngineBase::TrackChangeType::Manual) || (autocrossfade_enabled_ && change & EngineBase::TrackChangeType::Auto) || ((crossfade_enabled_ || autocrossfade_enabled_) && change & EngineBase::TrackChangeType::Scan));
 
   if (change & EngineBase::TrackChangeType::Auto && change & EngineBase::TrackChangeType::SameAlbum && !crossfade_same_album_) {
     crossfade = false;
@@ -241,6 +241,7 @@ bool GstEngine::Load(const QUrl &media_url, const QUrl &stream_url, const Engine
   BufferingFinished();
 
   SetVolume(volume_);
+  SetMute(muted_);
   SetStereoBalance(stereo_balance_);
   SetEqualizerParameters(equalizer_preamp_, equalizer_gains_);
 
@@ -415,6 +416,10 @@ void GstEngine::Seek(const quint64 offset_nanosec) {
 
 void GstEngine::SetVolumeSW(const uint volume) {
   if (current_pipeline_) current_pipeline_->SetVolume(volume);
+}
+
+void GstEngine::SetMuteSW(const bool mute) {
+  if (current_pipeline_) current_pipeline_->SetMute(mute);
 }
 
 qint64 GstEngine::position_nanosec() const {
@@ -837,6 +842,7 @@ void GstEngine::StartFadeout(GstEnginePipelinePtr pipeline) {
   QObject::disconnect(&*pipeline, &GstEnginePipeline::BufferingProgress, this, &GstEngine::BufferingProgress);
   QObject::disconnect(&*pipeline, &GstEnginePipeline::BufferingFinished, this, &GstEngine::BufferingFinished);
   QObject::disconnect(&*pipeline, &GstEnginePipeline::VolumeChanged, this, &EngineBase::UpdateVolume);
+  QObject::disconnect(&*pipeline, &GstEnginePipeline::MuteChanged, this, &EngineBase::UpdateMute);
   QObject::disconnect(&*pipeline, &GstEnginePipeline::AboutToFinish, this, &EngineBase::EmitAboutToFinish);
 
   fadeout_pipelines_.insert(pipeline->id(), pipeline);
@@ -921,6 +927,7 @@ GstEnginePipelinePtr GstEngine::CreatePipeline() {
   QObject::connect(&*pipeline, &GstEnginePipeline::BufferingProgress, this, &GstEngine::BufferingProgress);
   QObject::connect(&*pipeline, &GstEnginePipeline::BufferingFinished, this, &GstEngine::BufferingFinished);
   QObject::connect(&*pipeline, &GstEnginePipeline::VolumeChanged, this, &EngineBase::UpdateVolume);
+  QObject::connect(&*pipeline, &GstEnginePipeline::MuteChanged, this, &EngineBase::UpdateMute);
   QObject::connect(&*pipeline, &GstEnginePipeline::AboutToFinish, this, &EngineBase::EmitAboutToFinish);
 
   return pipeline;

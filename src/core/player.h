@@ -2,7 +2,7 @@
  * Strawberry Music Player
  * This file was part of Clementine.
  * Copyright 2010, David Sansome <me@davidsansome.com>
- * Copyright 2018-2021, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2018-2026, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -59,6 +59,7 @@ class Player : public PlayerInterface {
   SharedPtr<EngineBase> engine() const override { return engine_; }
   EngineBase::State GetState() const override { return last_state_; }
   uint GetVolume() const override;
+  bool is_muted() const override { return engine_->is_muted(); }
 
   PlaylistItemPtr GetCurrentItem() const override { return current_item_; }
   PlaylistItemPtr GetItemAt(const int pos) const override;
@@ -67,6 +68,8 @@ class Player : public PlayerInterface {
 
   void SetAnalyzer(AnalyzerContainer *analyzer) { analyzer_ = analyzer; }
   void SetEqualizer(SharedPtr<Equalizer> equalizer) { equalizer_ = equalizer; }
+
+  void EndPositionNext(const int position);
 
  public Q_SLOTS:
   void ReloadSettings() override;
@@ -85,6 +88,7 @@ class Player : public PlayerInterface {
   void PlayPlaylist(const QString &playlist_name) override;
   void SetVolumeFromSlider(const int value) override;
   void SetVolumeFromEngine(const uint volume) override;
+  void SetMuteFromEngine(const bool mute);
   void SetVolume(const uint volume) override;
   void VolumeUp() override;
   void VolumeDown() override;
@@ -134,6 +138,8 @@ class Player : public PlayerInterface {
 
   void UnPause();
 
+  void SetMuted(const bool mute);
+
  private:
   const SharedPtr<TaskManager> task_manager_;
   const SharedPtr<UrlHandlers> url_handlers_;
@@ -156,7 +162,6 @@ class Player : public PlayerInterface {
 
   QList<QUrl> loading_async_;
   uint volume_;
-  uint volume_before_mute_;
   QDateTime last_pressed_previous_;
 
   bool continue_on_error_;
@@ -167,6 +172,7 @@ class Player : public PlayerInterface {
 
   QDateTime pause_time_;
   quint64 play_offset_nanosec_;
+  qint64 play_end_sec_;
 };
 
 #endif  // PLAYER_H

@@ -2,7 +2,7 @@
  * Strawberry Music Player
  * This file was part of Clementine.
  * Copyright 2010, David Sansome <me@davidsansome.com>
- * Copyright 2018-2021, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2018-2026, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -316,6 +316,24 @@ void OSDBase::VolumeChanged(const uint value) {
 
 }
 
+void OSDBase::MuteChanged(const bool mute) {
+
+  if (!show_on_volume_change_) return;
+
+  QString message = mute ? tr("Muted") : tr("Unmuted");
+  if (type_ == OSDSettings::Type::Pretty) {
+    message = message.toHtmlEscaped();
+  }
+#if defined(HAVE_DBUS) && !defined(Q_OS_MACOS)
+  else if (type_ == OSDSettings::Type::Native) {
+    message = message.toHtmlEscaped();
+  }
+#endif
+
+  ShowMessage(QCoreApplication::applicationName(), message);
+
+}
+
 void OSDBase::ShowMessage(const QString &summary, const QString &message, const QString &icon, const QImage &image) {
 
   if (pretty_popup_->toggle_mode()) {
@@ -384,7 +402,7 @@ void OSDBase::RepeatModeChanged(const PlaylistSequence::RepeatMode mode) {
       case PlaylistSequence::RepeatMode::Album:    current_mode = tr("Repeat album"); break;
       case PlaylistSequence::RepeatMode::Playlist: current_mode = tr("Repeat playlist"); break;
       case PlaylistSequence::RepeatMode::OneByOne: current_mode = tr("Stop after every track"); break;
-      case PlaylistSequence::RepeatMode::Intro:    current_mode = tr("Intro tracks"); break;
+      case PlaylistSequence::RepeatMode::Scan: current_mode = tr("Scan tracks"); break;
     }
     ShowMessage(QCoreApplication::applicationName(), current_mode);
   }
