@@ -586,9 +586,11 @@ void AlbumCoverChoiceController::SaveArtManualToSong(Song *song, const QUrl &art
     case Song::Source::Unknown:
       break;
     case Song::Source::Subsonic:
+    case Song::Source::Plex:
     case Song::Source::Tidal:
     case Song::Source::Spotify:
     case Song::Source::Qobuz:
+    case Song::Source::Jellyfin:
       StreamingServicePtr service = streaming_services_->ServiceBySource(song->source());
       if (!service) break;
       if (service->artists_collection_backend()) {

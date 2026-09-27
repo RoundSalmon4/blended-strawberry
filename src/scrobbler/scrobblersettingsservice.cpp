@@ -19,8 +19,11 @@
 
 #include "config.h"
 
+#include <utility>
+
 #include <QList>
 #include <QString>
+#include <QStringList>
 #include <QSettings>
 
 #include "core/song.h"
@@ -55,12 +58,31 @@ void ScrobblerSettingsService::ReloadSettings() {
   prefer_albumartist_ = s.value(ScrobblerSettings::kAlbumArtist, ScrobblerSettings::kDefaultAlbumArtist).toBool();
   show_error_dialog_ = s.value(ScrobblerSettings::kShowErrorDialog, ScrobblerSettings::kDefaultShowErrorDialog).toBool();
   strip_remastered_ = s.value(ScrobblerSettings::kStripRemastered, ScrobblerSettings::kDefaultStripRemastered).toBool();
-  const QStringList sources = s.value(ScrobblerSettings::kSources).toStringList();
-  s.endGroup();
+  const bool has_sources = s.contains(ScrobblerSettings::kSources);
+  QStringList sources = s.value(ScrobblerSettings::kSources).toStringList();
+  const bool plex_source_migration_done = s.value(ScrobblerSettings::kPlexSourceMigrationDone, false).toBool();
+  const bool jellyfin_source_migration_done = s.value(ScrobblerSettings::kJellyfinSourceMigrationDone, false).toBool();
 
   sources_.clear();
 
-  if (sources.isEmpty()) {
+  if (has_sources) {
+    if (!sources.isEmpty()) {
+      const qsizetype sources_count = sources.count();
+      if (!plex_source_migration_done && !sources.contains(Song::TextForSource(Song::Source::Plex))) {
+        sources << Song::TextForSource(Song::Source::Plex);
+      }
+      if (!jellyfin_source_migration_done && !sources.contains(Song::TextForSource(Song::Source::Jellyfin))) {
+        sources << Song::TextForSource(Song::Source::Jellyfin);
+      }
+      if (sources.count() != sources_count) {
+        s.setValue(ScrobblerSettings::kSources, sources);
+      }
+    }
+    for (const QString &source : std::as_const(sources)) {
+      sources_ << Song::SourceFromText(source);
+    }
+  }
+  else {
     sources_ << Song::Source::Unknown
              << Song::Source::LocalFile
              << Song::Source::Collection
@@ -70,15 +92,18 @@ void ScrobblerSettingsService::ReloadSettings() {
              << Song::Source::Tidal
              << Song::Source::Subsonic
              << Song::Source::Qobuz
-             << Song::Source::Spotify
              << Song::Source::SomaFM
-             << Song::Source::RadioParadise;
+             << Song::Source::RadioParadise
+             << Song::Source::Spotify
+             << Song::Source::RadioBrowser
+             << Song::Source::Plex
+             << Song::Source::Jellyfin;
   }
-  else {
-    for (const QString &source : sources) {
-      sources_ << Song::SourceFromText(source);
-    }
-  }
+
+  if (!plex_source_migration_done) s.setValue(ScrobblerSettings::kPlexSourceMigrationDone, true);
+  if (!jellyfin_source_migration_done) s.setValue(ScrobblerSettings::kJellyfinSourceMigrationDone, true);
+
+  s.endGroup();
 
   Q_EMIT ScrobblingEnabledChanged(enabled_);
   Q_EMIT ScrobbleButtonVisibilityChanged(scrobble_button_);

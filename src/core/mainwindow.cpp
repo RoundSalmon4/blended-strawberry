@@ -187,6 +187,12 @@
 #  include "qobuz/qobuzmetadatarequest.h"
 #  include "constants/qobuzsettings.h"
 #endif
+#ifdef HAVE_PLEX
+#  include "constants/plexsettings.h"
+#endif
+#ifdef HAVE_JELLYFIN
+#  include "constants/jellyfinsettings.h"
+#endif
 
 #include "streaming/streamingservices.h"
 #include "streaming/streamingservice.h"
@@ -380,6 +386,12 @@ MainWindow::MainWindow(Application *app,
 #ifdef HAVE_QOBUZ
       qobuz_view_(new StreamingTabsView(app->streaming_services()->ServiceBySource(Song::Source::Qobuz), app->albumcover_loader(), QLatin1String(QobuzSettings::kSettingsGroup), this)),
 #endif
+#ifdef HAVE_PLEX
+      plex_view_(new StreamingSongsView(app->streaming_services()->ServiceBySource(Song::Source::Plex), QLatin1String(PlexSettings::kSettingsGroup), this)),
+#endif
+#ifdef HAVE_JELLYFIN
+      jellyfin_view_(new StreamingTabsView(app->streaming_services()->ServiceBySource(Song::Source::Jellyfin), app->albumcover_loader(), QLatin1String(JellyfinSettings::kSettingsGroup), this)),
+#endif
       radio_view_(new RadioViewContainer(this)),
       collection_show_all_(nullptr),
       collection_show_duplicates_(nullptr),
@@ -473,6 +485,12 @@ MainWindow::MainWindow(Application *app,
 #endif
 #ifdef HAVE_QOBUZ
   ui_->tabs->AddTab(qobuz_view_, u"qobuz"_s, IconLoader::Load(u"qobuz"_s, true, 0, 32), tr("Qobuz"));
+#endif
+#ifdef HAVE_PLEX
+  ui_->tabs->AddTab(plex_view_, u"plex"_s, IconLoader::Load(u"plex"_s, true, 0, 32), tr("Plex"));
+#endif
+#ifdef HAVE_JELLYFIN
+  ui_->tabs->AddTab(jellyfin_view_, u"jellyfin"_s, IconLoader::Load(u"jellyfin"_s, true, 0, 32), tr("Jellyfin"));
 #endif
 
   // Add the playing widget to the fancy tab widget
@@ -848,6 +866,21 @@ MainWindow::MainWindow(Application *app,
   if (SpotifyServicePtr spotifyservice = app_->streaming_services()->Service<SpotifyService>()) {
     QObject::connect(&*spotifyservice, &SpotifyService::UpdateSpotifyAccessToken, &*app_->player()->engine(), &EngineBase::UpdateSpotifyAccessToken);
   }
+#endif
+
+#ifdef HAVE_PLEX
+  QObject::connect(plex_view_, &StreamingSongsView::OpenSettingsDialog, this, &MainWindow::OpenServiceSettingsDialog);
+  QObject::connect(plex_view_->view(), &StreamingCollectionView::AddToPlaylistSignal, this, &MainWindow::AddToPlaylist);
+#endif
+
+#ifdef HAVE_JELLYFIN
+  QObject::connect(jellyfin_view_, &StreamingTabsView::OpenSettingsDialog, this, &MainWindow::OpenServiceSettingsDialog);
+  QObject::connect(&*app_->streaming_services()->ServiceBySource(Song::Source::Jellyfin), &StreamingService::ShowErrorDialog, this, &MainWindow::ShowErrorDialog);
+  QObject::connect(jellyfin_view_->artists_collection_view(), &StreamingCollectionView::AddToPlaylistSignal, this, &MainWindow::AddToPlaylist);
+  QObject::connect(jellyfin_view_->albums_collection_view(), &StreamingCollectionView::AddToPlaylistSignal, this, &MainWindow::AddToPlaylist);
+  QObject::connect(jellyfin_view_->songs_collection_view(), &StreamingCollectionView::AddToPlaylistSignal, this, &MainWindow::AddToPlaylist);
+  QObject::connect(jellyfin_view_->search_view(), &StreamingSearchView::OpenSettingsDialog, this, &MainWindow::OpenServiceSettingsDialog);
+  QObject::connect(jellyfin_view_->search_view(), &StreamingSearchView::AddToPlaylist, this, &MainWindow::AddToPlaylist);
 #endif
 
   QObject::connect(radio_view_, &RadioViewContainer::Refresh, &*app_->radio_services(), &RadioServices::RefreshChannels);
@@ -1340,6 +1373,30 @@ void MainWindow::ReloadSettings() {
   }
 #endif
 
+#ifdef HAVE_PLEX
+  s.beginGroup(PlexSettings::kSettingsGroup);
+  bool enable_plex = s.value(PlexSettings::kEnabled, PlexSettings::kDefaultEnabled).toBool();
+  s.endGroup();
+  if (enable_plex) {
+    ui_->tabs->EnableTab(plex_view_);
+  }
+  else {
+    ui_->tabs->DisableTab(plex_view_);
+  }
+#endif
+
+#ifdef HAVE_JELLYFIN
+  s.beginGroup(JellyfinSettings::kSettingsGroup);
+  bool enable_jellyfin = s.value(JellyfinSettings::kEnabled, JellyfinSettings::kDefaultEnabled).toBool();
+  s.endGroup();
+  if (enable_jellyfin) {
+    ui_->tabs->EnableTab(jellyfin_view_);
+  }
+  else {
+    ui_->tabs->DisableTab(jellyfin_view_);
+  }
+#endif
+
   ui_->tabs->ReloadSettings();
 
 }
@@ -1364,6 +1421,7 @@ void MainWindow::ReloadAllSettings() {
   smartplaylists_view_->ReloadSettings();
   radio_view_->ReloadSettings();
   app_->streaming_services()->ReloadSettings();
+  app_->scrobbler()->ReloadSettings();
   app_->radio_services()->ReloadSettings();
   app_->cover_providers()->ReloadSettings();
   app_->lyrics_providers()->ReloadSettings();
@@ -1395,6 +1453,13 @@ void MainWindow::ReloadAllSettings() {
 #ifdef HAVE_QOBUZ
   qobuz_view_->ReloadSettings();
   qobuz_view_->search_view()->ReloadSettings();
+#endif
+#ifdef HAVE_PLEX
+  plex_view_->ReloadSettings();
+#endif
+#ifdef HAVE_JELLYFIN
+  jellyfin_view_->ReloadSettings();
+  jellyfin_view_->search_view()->ReloadSettings();
 #endif
 #ifdef HAVE_DISCORD_RPC
   discord_rich_presence_->ReloadSettings();
@@ -1888,8 +1953,14 @@ void MainWindow::UpdateTrackPosition() {
   if (!item) return;
 
   const qint64 length = (item->EffectiveMetadata().length_nanosec() / kNsecPerSec);
-  if (length <= 0) return;
   const int position = std::floor(static_cast<float>(app_->player()->engine()->position_nanosec()) / static_cast<float>(kNsecPerSec) + 0.5);
+  if (length <= 0) {
+    // Streams without a length, for example radio, the player still needs to know that it's playing.
+    if (app_->player()->GetState() == EngineBase::State::Playing) {
+      app_->player()->TrackPositionChanged(position);
+    }
+    return;
+  }
 
   // Update the tray icon every 10 seconds
   if (position % 10 == 0) systemtrayicon_->SetProgress(static_cast<int>(static_cast<double>(position) / static_cast<double>(length) * 100.0));
@@ -1914,7 +1985,7 @@ void MainWindow::UpdateTrackPosition() {
 
   // At the end of the time of the track, move to the next track
   if (app_->player()->GetState() == EngineBase::State::Playing) {
-    app_->player()->EndPositionNext(position);
+    app_->player()->TrackPositionChanged(position);
   }
 
 }
@@ -2858,6 +2929,12 @@ void MainWindow::OpenServiceSettingsDialog(const Song::Source source) {
     case Song::Source::Spotify:
       settings_dialog_->OpenAtPage(SettingsDialog::Page::Spotify);
       break;
+    case Song::Source::Plex:
+      settings_dialog_->OpenAtPage(SettingsDialog::Page::Plex);
+      break;
+    case Song::Source::Jellyfin:
+      settings_dialog_->OpenAtPage(SettingsDialog::Page::Jellyfin);
+      break;
     default:
       break;
   }
@@ -3549,6 +3626,16 @@ void MainWindow::FocusSearchField() {
 #ifdef HAVE_QOBUZ
   else if (ui_->tabs->currentIndex() == ui_->tabs->IndexOfTab(qobuz_view_) && !qobuz_view_->SearchFieldHasFocus()) {
     qobuz_view_->FocusSearchField();
+  }
+#endif
+#ifdef HAVE_PLEX
+  else if (ui_->tabs->currentIndex() == ui_->tabs->IndexOfTab(plex_view_) && !plex_view_->SearchFieldHasFocus()) {
+    plex_view_->FocusSearchField();
+  }
+#endif
+#ifdef HAVE_JELLYFIN
+  else if (ui_->tabs->currentIndex() == ui_->tabs->IndexOfTab(jellyfin_view_) && !jellyfin_view_->SearchFieldHasFocus()) {
+    jellyfin_view_->FocusSearchField();
   }
 #endif
   else if (!ui_->playlist->SearchFieldHasFocus()) {

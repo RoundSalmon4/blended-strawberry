@@ -89,10 +89,12 @@
         <file>icons/128x128/scrobble-disabled.png</file>
         <file>icons/128x128/moodbar.png</file>
         <file>icons/128x128/love.png</file>
+        <file>icons/128x128/plex.png</file>
         <file>icons/128x128/subsonic.png</file>
         <file>icons/128x128/tidal.png</file>
         <file>icons/128x128/spotify.png</file>
         <file>icons/128x128/qobuz.png</file>
+        <file>icons/128x128/jellyfin.png</file>
         <file>icons/128x128/multimedia-player-ipod-standard-black.png</file>
         <file>icons/128x128/radio.png</file>
         <file>icons/128x128/somafm.png</file>
@@ -190,10 +192,12 @@
         <file>icons/64x64/scrobble-disabled.png</file>
         <file>icons/64x64/moodbar.png</file>
         <file>icons/64x64/love.png</file>
+        <file>icons/64x64/plex.png</file>
         <file>icons/64x64/subsonic.png</file>
         <file>icons/64x64/tidal.png</file>
         <file>icons/64x64/spotify.png</file>
         <file>icons/64x64/qobuz.png</file>
+        <file>icons/64x64/jellyfin.png</file>
         <file>icons/64x64/multimedia-player-ipod-standard-black.png</file>
         <file>icons/64x64/radio.png</file>
         <file>icons/64x64/somafm.png</file>
@@ -295,10 +299,12 @@
         <file>icons/48x48/scrobble-disabled.png</file>
         <file>icons/48x48/moodbar.png</file>
         <file>icons/48x48/love.png</file>
+        <file>icons/48x48/plex.png</file>
         <file>icons/48x48/subsonic.png</file>
         <file>icons/48x48/tidal.png</file>
         <file>icons/48x48/spotify.png</file>
         <file>icons/48x48/qobuz.png</file>
+        <file>icons/48x48/jellyfin.png</file>
         <file>icons/48x48/multimedia-player-ipod-standard-black.png</file>
         <file>icons/48x48/radio.png</file>
         <file>icons/48x48/somafm.png</file>
@@ -400,10 +406,12 @@
         <file>icons/32x32/scrobble-disabled.png</file>
         <file>icons/32x32/moodbar.png</file>
         <file>icons/32x32/love.png</file>
+        <file>icons/32x32/plex.png</file>
         <file>icons/32x32/subsonic.png</file>
         <file>icons/32x32/tidal.png</file>
         <file>icons/32x32/spotify.png</file>
         <file>icons/32x32/qobuz.png</file>
+        <file>icons/32x32/jellyfin.png</file>
         <file>icons/32x32/multimedia-player-ipod-standard-black.png</file>
         <file>icons/32x32/radio.png</file>
         <file>icons/32x32/somafm.png</file>
@@ -505,10 +513,12 @@
         <file>icons/22x22/scrobble-disabled.png</file>
         <file>icons/22x22/moodbar.png</file>
         <file>icons/22x22/love.png</file>
+        <file>icons/22x22/plex.png</file>
         <file>icons/22x22/subsonic.png</file>
         <file>icons/22x22/tidal.png</file>
         <file>icons/22x22/spotify.png</file>
         <file>icons/22x22/qobuz.png</file>
+        <file>icons/22x22/jellyfin.png</file>
         <file>icons/22x22/multimedia-player-ipod-standard-black.png</file>
         <file>icons/22x22/radio.png</file>
         <file>icons/22x22/somafm.png</file>

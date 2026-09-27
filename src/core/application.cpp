@@ -79,6 +79,9 @@
 #ifdef HAVE_SUBSONIC
 #  include "scrobbler/subsonicscrobbler.h"
 #endif
+#ifdef HAVE_JELLYFIN
+#  include "scrobbler/jellyfinscrobbler.h"
+#endif
 
 #include "streaming/streamingservices.h"
 
@@ -99,6 +102,14 @@
 #ifdef HAVE_QOBUZ
 #  include "qobuz/qobuzservice.h"
 #  include "covermanager/qobuzcoverprovider.h"
+#endif
+
+#ifdef HAVE_PLEX
+#  include "plex/plexservice.h"
+#endif
+
+#ifdef HAVE_JELLYFIN
+#  include "jellyfin/jellyfinservice.h"
 #endif
 
 #ifdef HAVE_MOODBAR
@@ -200,6 +211,12 @@ class ApplicationImpl {
 #ifdef HAVE_QOBUZ
           streaming_services->AddService(make_shared<QobuzService>(app->task_manager(), app->database(), app->network(), app->url_handlers(), app->albumcover_loader()));
 #endif
+#ifdef HAVE_PLEX
+          streaming_services->AddService(make_shared<PlexService>(app->task_manager(), app->database(), app->network(), app->url_handlers(), app->albumcover_loader()));
+#endif
+#ifdef HAVE_JELLYFIN
+          streaming_services->AddService(make_shared<JellyfinService>(app->task_manager(), app->database(), app->network(), app->credentials_manager(), app->url_handlers(), app->albumcover_loader()));
+#endif
           return streaming_services;
         }),
         radio_services_([app]() { return new RadioServices(app->task_manager(), app->network(), app->database(), app->albumcover_loader()); }),
@@ -217,6 +234,9 @@ class ApplicationImpl {
           scrobbler->AddService(make_shared<ListenBrainzScrobbler>(scrobbler->settings(), app->network()));
 #ifdef HAVE_SUBSONIC
           scrobbler->AddService(make_shared<SubsonicScrobbler>(scrobbler->settings(), app->network(), app->streaming_services()->Service<SubsonicService>(), app));
+#endif
+#ifdef HAVE_JELLYFIN
+          scrobbler->AddService(make_shared<JellyfinScrobbler>(scrobbler->settings(), app->network(), app->streaming_services()->Service<JellyfinService>(), app->player(), app->playlist_manager(), app));
 #endif
           return scrobbler;
         })
