@@ -17,51 +17,48 @@
  *
  */
 
-#ifndef STREAMINGCOLLECTIONVIEW_H
-#define STREAMINGCOLLECTIONVIEW_H
+#ifndef STREAMINGLIBRARYVIEW_H
+#define STREAMINGLIBRARYVIEW_H
 
 #include "config.h"
 
 #include <QObject>
+#include <QWidget>
 #include <QString>
 
+#include "includes/shared_ptr.h"
 #include "core/song.h"
-#include "collection/collectiontreeview.h"
 
-class QWidget;
-class QMenu;
-class QAction;
+class StreamingService;
+class StreamingCollectionView;
+class StreamingCollectionViewContainer;
 
-class CollectionModel;
-
-class StreamingCollectionView : public CollectionTreeView {
+class StreamingLibraryView : public QWidget {
   Q_OBJECT
 
  public:
-  explicit StreamingCollectionView(QWidget *parent = nullptr);
+  explicit StreamingLibraryView(const SharedPtr<StreamingService> service, const QString &settings_group, QWidget *parent = nullptr);
 
-  void Init(CollectionModel *collection_model, const bool favorite = false);
-
- public Q_SLOTS:
   void ReloadSettings();
 
- Q_SIGNALS:
-  void GetSongs();
-  void RemoveSongs(const SongList &songs);
+  StreamingCollectionView *view() const;
 
- protected:
-  QString EmptyTitleText() const override;
-  QString EmptyText() const override;
-  void EmptyClicked() override;
-  void AddContextMenuActions(QMenu *menu) override;
-  void UpdateContextMenuActions(const bool has_selection) override;
+  bool SearchFieldHasFocus() const;
+  void FocusSearchField();
 
  private Q_SLOTS:
-  void RemoveSelectedSongs();
+  void Configure();
+  void GetSongs();
+  void AbortGetSongs();
+  void SongsFinished(const SongMap &songs, const QString &error);
+
+ Q_SIGNALS:
+  void ShowErrorDialog(const QString &error);
+  void OpenSettingsDialog(const Song::Source source);
 
  private:
-  bool favorite_;
-  QAction *action_remove_songs_;
+  const SharedPtr<StreamingService> service_;
+  StreamingCollectionViewContainer *container_;
 };
 
-#endif  // STREAMINGCOLLECTIONVIEW_H
+#endif  // STREAMINGLIBRARYVIEW_H

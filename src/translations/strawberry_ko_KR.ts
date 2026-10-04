@@ -1361,15 +1361,7 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
   </context>
   <context>
-    <name>CollectionView</name>
-    <message>
-      <source>Your collection is empty!</source>
-      <translation>라이브러리가 비어 있습니다!</translation>
-    </message>
-    <message>
-      <source>Click here to add some music</source>
-      <translation>음악을 추가하려면 여기를 클릭하십시오</translation>
-    </message>
+    <name>CollectionTreeView</name>
     <message>
       <source>Append to current playlist</source>
       <translation>현재 재생 목록에 추가</translation>
@@ -1393,6 +1385,17 @@ If there are no matches then it will use the largest image in the directory.</so
     <message>
       <source>Search for this</source>
       <translation>다음 항목 검색</translation>
+    </message>
+  </context>
+  <context>
+    <name>CollectionView</name>
+    <message>
+      <source>Your collection is empty!</source>
+      <translation>라이브러리가 비어 있습니다!</translation>
+    </message>
+    <message>
+      <source>Click here to add some music</source>
+      <translation>음악을 추가하려면 여기를 클릭하십시오</translation>
     </message>
     <message>
       <source>Organize files...</source>
@@ -7065,26 +7068,6 @@ Are you sure you want to continue?</source>
       <translation>음악을 가져오려면 여기를 클릭하십시오</translation>
     </message>
     <message>
-      <source>Append to current playlist</source>
-      <translation>현재 재생 목록에 추가</translation>
-    </message>
-    <message>
-      <source>Replace current playlist</source>
-      <translation>현재 재생 목록 대체</translation>
-    </message>
-    <message>
-      <source>Open in new playlist</source>
-      <translation>새 재생 목록에서 열기</translation>
-    </message>
-    <message>
-      <source>Queue track</source>
-      <translation>대기열에 트랙 추가</translation>
-    </message>
-    <message>
-      <source>Queue to play next</source>
-      <translation>다음에 재생할 대기열에 추가</translation>
-    </message>
-    <message>
       <source>Remove from favorites</source>
       <translation>즐겨찾기에서 삭제</translation>
     </message>
@@ -7106,6 +7089,40 @@ Are you sure you want to continue?</source>
     <message>
       <source>Refresh catalogue</source>
       <translation>카탈로그 새로 고침</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingFavoritesView</name>
+    <message>
+      <source>Streaming Tabs View</source>
+      <translation type="unfinished">Streaming Tabs View</translation>
+    </message>
+    <message>
+      <source>Artists</source>
+      <translation>아티스트</translation>
+    </message>
+    <message>
+      <source>Albums</source>
+      <translation>앨범</translation>
+    </message>
+    <message>
+      <source>Songs</source>
+      <translation>노래</translation>
+    </message>
+    <message>
+      <source>Search</source>
+      <translation>검색</translation>
+    </message>
+    <message>
+      <source>Configure %1...</source>
+      <translation>%1 설정...</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingLibraryView</name>
+    <message>
+      <source>Configure %1...</source>
+      <translation>%1 설정...</translation>
     </message>
   </context>
   <context>
@@ -7180,40 +7197,6 @@ Are you sure you want to continue?</source>
     <message>
       <source>Group by</source>
       <translation>그룹 방식</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingSongsView</name>
-    <message>
-      <source>Configure %1...</source>
-      <translation>%1 설정...</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingTabsView</name>
-    <message>
-      <source>Streaming Tabs View</source>
-      <translation type="unfinished">Streaming Tabs View</translation>
-    </message>
-    <message>
-      <source>Artists</source>
-      <translation>아티스트</translation>
-    </message>
-    <message>
-      <source>Albums</source>
-      <translation>앨범</translation>
-    </message>
-    <message>
-      <source>Songs</source>
-      <translation>노래</translation>
-    </message>
-    <message>
-      <source>Search</source>
-      <translation>검색</translation>
-    </message>
-    <message>
-      <source>Configure %1...</source>
-      <translation>%1 설정...</translation>
     </message>
   </context>
   <context>

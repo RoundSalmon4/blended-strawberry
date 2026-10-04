@@ -1361,15 +1361,7 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
   </context>
   <context>
-    <name>CollectionView</name>
-    <message>
-      <source>Your collection is empty!</source>
-      <translation>ライブラリは空です!</translation>
-    </message>
-    <message>
-      <source>Click here to add some music</source>
-      <translation>音楽を追加するにはここをクリックします</translation>
-    </message>
+    <name>CollectionTreeView</name>
     <message>
       <source>Append to current playlist</source>
       <translation>現在のプレイリストに追加する</translation>
@@ -1393,6 +1385,17 @@ If there are no matches then it will use the largest image in the directory.</so
     <message>
       <source>Search for this</source>
       <translation>これを検索</translation>
+    </message>
+  </context>
+  <context>
+    <name>CollectionView</name>
+    <message>
+      <source>Your collection is empty!</source>
+      <translation>ライブラリは空です!</translation>
+    </message>
+    <message>
+      <source>Click here to add some music</source>
+      <translation>音楽を追加するにはここをクリックします</translation>
     </message>
     <message>
       <source>Organize files...</source>
@@ -7065,26 +7068,6 @@ Are you sure you want to continue?</source>
       <translation>音楽を取得するにはここをクリック</translation>
     </message>
     <message>
-      <source>Append to current playlist</source>
-      <translation>現在のプレイリストに追加する</translation>
-    </message>
-    <message>
-      <source>Replace current playlist</source>
-      <translation>現在のプレイリストを置き換える</translation>
-    </message>
-    <message>
-      <source>Open in new playlist</source>
-      <translation>新しいプレイリストで開く</translation>
-    </message>
-    <message>
-      <source>Queue track</source>
-      <translation>トラックをキューに追加</translation>
-    </message>
-    <message>
-      <source>Queue to play next</source>
-      <translation>次に再生する</translation>
-    </message>
-    <message>
       <source>Remove from favorites</source>
       <translation>お気に入りから削除</translation>
     </message>
@@ -7106,6 +7089,40 @@ Are you sure you want to continue?</source>
     <message>
       <source>Refresh catalogue</source>
       <translation>カタログを更新</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingFavoritesView</name>
+    <message>
+      <source>Streaming Tabs View</source>
+      <translation type="unfinished">Streaming Tabs View</translation>
+    </message>
+    <message>
+      <source>Artists</source>
+      <translation>アーティスト</translation>
+    </message>
+    <message>
+      <source>Albums</source>
+      <translation>アルバム</translation>
+    </message>
+    <message>
+      <source>Songs</source>
+      <translation>曲</translation>
+    </message>
+    <message>
+      <source>Search</source>
+      <translation>検索</translation>
+    </message>
+    <message>
+      <source>Configure %1...</source>
+      <translation>%1 の設定...</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingLibraryView</name>
+    <message>
+      <source>Configure %1...</source>
+      <translation>%1 の設定...</translation>
     </message>
   </context>
   <context>
@@ -7180,40 +7197,6 @@ Are you sure you want to continue?</source>
     <message>
       <source>Group by</source>
       <translation>グループ化</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingSongsView</name>
-    <message>
-      <source>Configure %1...</source>
-      <translation>%1 の設定...</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingTabsView</name>
-    <message>
-      <source>Streaming Tabs View</source>
-      <translation type="unfinished">Streaming Tabs View</translation>
-    </message>
-    <message>
-      <source>Artists</source>
-      <translation>アーティスト</translation>
-    </message>
-    <message>
-      <source>Albums</source>
-      <translation>アルバム</translation>
-    </message>
-    <message>
-      <source>Songs</source>
-      <translation>曲</translation>
-    </message>
-    <message>
-      <source>Search</source>
-      <translation>検索</translation>
-    </message>
-    <message>
-      <source>Configure %1...</source>
-      <translation>%1 の設定...</translation>
     </message>
   </context>
   <context>

@@ -1361,15 +1361,7 @@ Jos vastaavia tiedostoja ei löydy, Strawberry käyttää suurinta kansiossa ole
     </message>
   </context>
   <context>
-    <name>CollectionView</name>
-    <message>
-      <source>Your collection is empty!</source>
-      <translation>Kirjasto on tyhjä!</translation>
-    </message>
-    <message>
-      <source>Click here to add some music</source>
-      <translation>Napsauta tästä lisätäksesi musiikkia</translation>
-    </message>
+    <name>CollectionTreeView</name>
     <message>
       <source>Append to current playlist</source>
       <translation>Lisää nykyiselle soittolistalle</translation>
@@ -1393,6 +1385,17 @@ Jos vastaavia tiedostoja ei löydy, Strawberry käyttää suurinta kansiossa ole
     <message>
       <source>Search for this</source>
       <translation>Hae tätä</translation>
+    </message>
+  </context>
+  <context>
+    <name>CollectionView</name>
+    <message>
+      <source>Your collection is empty!</source>
+      <translation>Kirjasto on tyhjä!</translation>
+    </message>
+    <message>
+      <source>Click here to add some music</source>
+      <translation>Napsauta tästä lisätäksesi musiikkia</translation>
     </message>
     <message>
       <source>Organize files...</source>
@@ -7070,26 +7073,6 @@ Haluatko varmasti jatkaa?</translation>
       <translation type="unfinished">Click here to retrieve music</translation>
     </message>
     <message>
-      <source>Append to current playlist</source>
-      <translation>Lisää nykyiselle soittolistalle</translation>
-    </message>
-    <message>
-      <source>Replace current playlist</source>
-      <translation>Korvaa nykyinen soittolista</translation>
-    </message>
-    <message>
-      <source>Open in new playlist</source>
-      <translation>Avaa uudessa soittolistassa</translation>
-    </message>
-    <message>
-      <source>Queue track</source>
-      <translation>Aseta kappale jonoon</translation>
-    </message>
-    <message>
-      <source>Queue to play next</source>
-      <translation>Toistojonoon</translation>
-    </message>
-    <message>
       <source>Remove from favorites</source>
       <translation type="unfinished">Remove from favorites</translation>
     </message>
@@ -7111,6 +7094,40 @@ Haluatko varmasti jatkaa?</translation>
     <message>
       <source>Refresh catalogue</source>
       <translation type="unfinished">Refresh catalogue</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingFavoritesView</name>
+    <message>
+      <source>Streaming Tabs View</source>
+      <translation type="unfinished">Streaming Tabs View</translation>
+    </message>
+    <message>
+      <source>Artists</source>
+      <translation>Esittäjät</translation>
+    </message>
+    <message>
+      <source>Albums</source>
+      <translation>Albumit</translation>
+    </message>
+    <message>
+      <source>Songs</source>
+      <translation>Kappaleet</translation>
+    </message>
+    <message>
+      <source>Search</source>
+      <translation>Etsi</translation>
+    </message>
+    <message>
+      <source>Configure %1...</source>
+      <translation>%1 - asetukset...</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingLibraryView</name>
+    <message>
+      <source>Configure %1...</source>
+      <translation>%1 - asetukset...</translation>
     </message>
   </context>
   <context>
@@ -7185,40 +7202,6 @@ Haluatko varmasti jatkaa?</translation>
     <message>
       <source>Group by</source>
       <translation>Järjestä</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingSongsView</name>
-    <message>
-      <source>Configure %1...</source>
-      <translation>%1 - asetukset...</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingTabsView</name>
-    <message>
-      <source>Streaming Tabs View</source>
-      <translation type="unfinished">Streaming Tabs View</translation>
-    </message>
-    <message>
-      <source>Artists</source>
-      <translation>Esittäjät</translation>
-    </message>
-    <message>
-      <source>Albums</source>
-      <translation>Albumit</translation>
-    </message>
-    <message>
-      <source>Songs</source>
-      <translation>Kappaleet</translation>
-    </message>
-    <message>
-      <source>Search</source>
-      <translation>Etsi</translation>
-    </message>
-    <message>
-      <source>Configure %1...</source>
-      <translation>%1 - asetukset...</translation>
     </message>
   </context>
   <context>

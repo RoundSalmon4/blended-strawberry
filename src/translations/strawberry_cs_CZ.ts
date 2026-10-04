@@ -1361,15 +1361,7 @@ Pokud nenajde žádné, které by se shodovaly, potom použije největší obrá
     </message>
   </context>
   <context>
-    <name>CollectionView</name>
-    <message>
-      <source>Your collection is empty!</source>
-      <translation>Vaše hudební sbírka je prázdná!</translation>
-    </message>
-    <message>
-      <source>Click here to add some music</source>
-      <translation>Klepněte sem pro přidání nějaké hudby</translation>
-    </message>
+    <name>CollectionTreeView</name>
     <message>
       <source>Append to current playlist</source>
       <translation>Přidat do současného seznamu skladeb</translation>
@@ -1393,6 +1385,17 @@ Pokud nenajde žádné, které by se shodovaly, potom použije největší obrá
     <message>
       <source>Search for this</source>
       <translation>Hledat toto</translation>
+    </message>
+  </context>
+  <context>
+    <name>CollectionView</name>
+    <message>
+      <source>Your collection is empty!</source>
+      <translation>Vaše hudební sbírka je prázdná!</translation>
+    </message>
+    <message>
+      <source>Click here to add some music</source>
+      <translation>Klepněte sem pro přidání nějaké hudby</translation>
     </message>
     <message>
       <source>Organize files...</source>
@@ -7080,26 +7083,6 @@ Opravdu chcete pokračovat?</translation>
       <translation>Klikněte zde pro načtení hudby</translation>
     </message>
     <message>
-      <source>Append to current playlist</source>
-      <translation>Přidat do současného seznamu skladeb</translation>
-    </message>
-    <message>
-      <source>Replace current playlist</source>
-      <translation>Nahradit současný seznam skladeb</translation>
-    </message>
-    <message>
-      <source>Open in new playlist</source>
-      <translation>Otevřít v novém seznamu skladeb</translation>
-    </message>
-    <message>
-      <source>Queue track</source>
-      <translation>Přidat skladbu do řady</translation>
-    </message>
-    <message>
-      <source>Queue to play next</source>
-      <translation>Do fronty jako další</translation>
-    </message>
-    <message>
       <source>Remove from favorites</source>
       <translation>Odstranit z oblíbených</translation>
     </message>
@@ -7121,6 +7104,40 @@ Opravdu chcete pokračovat?</translation>
     <message>
       <source>Refresh catalogue</source>
       <translation>Obnovit katalog</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingFavoritesView</name>
+    <message>
+      <source>Streaming Tabs View</source>
+      <translation type="unfinished">Streaming Tabs View</translation>
+    </message>
+    <message>
+      <source>Artists</source>
+      <translation>Umělci</translation>
+    </message>
+    <message>
+      <source>Albums</source>
+      <translation>Alba</translation>
+    </message>
+    <message>
+      <source>Songs</source>
+      <translation>Skladby</translation>
+    </message>
+    <message>
+      <source>Search</source>
+      <translation>Hledat</translation>
+    </message>
+    <message>
+      <source>Configure %1...</source>
+      <translation>Nastavit %1...</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingLibraryView</name>
+    <message>
+      <source>Configure %1...</source>
+      <translation>Nastavit %1...</translation>
     </message>
   </context>
   <context>
@@ -7195,40 +7212,6 @@ Opravdu chcete pokračovat?</translation>
     <message>
       <source>Group by</source>
       <translation>Seskupovat podle</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingSongsView</name>
-    <message>
-      <source>Configure %1...</source>
-      <translation>Nastavit %1...</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingTabsView</name>
-    <message>
-      <source>Streaming Tabs View</source>
-      <translation type="unfinished">Streaming Tabs View</translation>
-    </message>
-    <message>
-      <source>Artists</source>
-      <translation>Umělci</translation>
-    </message>
-    <message>
-      <source>Albums</source>
-      <translation>Alba</translation>
-    </message>
-    <message>
-      <source>Songs</source>
-      <translation>Skladby</translation>
-    </message>
-    <message>
-      <source>Search</source>
-      <translation>Hledat</translation>
-    </message>
-    <message>
-      <source>Configure %1...</source>
-      <translation>Nastavit %1...</translation>
     </message>
   </context>
   <context>

@@ -1361,15 +1361,7 @@ Ef engar samsvaranir finnast, verður notast víð stærstu myndina í möppunni
     </message>
   </context>
   <context>
-    <name>CollectionView</name>
-    <message>
-      <source>Your collection is empty!</source>
-      <translation>Safnið þitt er tómt!</translation>
-    </message>
-    <message>
-      <source>Click here to add some music</source>
-      <translation>Smelltu hér til að bæta við tónlist</translation>
-    </message>
+    <name>CollectionTreeView</name>
     <message>
       <source>Append to current playlist</source>
       <translation>Bæta við fyrirliggjandi spilunarlista</translation>
@@ -1393,6 +1385,17 @@ Ef engar samsvaranir finnast, verður notast víð stærstu myndina í möppunni
     <message>
       <source>Search for this</source>
       <translation>Leita að þessu</translation>
+    </message>
+  </context>
+  <context>
+    <name>CollectionView</name>
+    <message>
+      <source>Your collection is empty!</source>
+      <translation>Safnið þitt er tómt!</translation>
+    </message>
+    <message>
+      <source>Click here to add some music</source>
+      <translation>Smelltu hér til að bæta við tónlist</translation>
     </message>
     <message>
       <source>Organize files...</source>
@@ -7070,26 +7073,6 @@ Ertu viss um að þú viljir halda áfram?</translation>
       <translation>Smelltu hér til að ná í tónlist</translation>
     </message>
     <message>
-      <source>Append to current playlist</source>
-      <translation>Bæta við fyrirliggjandi spilunarlista</translation>
-    </message>
-    <message>
-      <source>Replace current playlist</source>
-      <translation>Skipta út fyrirliggjandi spilunarlista</translation>
-    </message>
-    <message>
-      <source>Open in new playlist</source>
-      <translation>Opna í nýjum spilunarlista</translation>
-    </message>
-    <message>
-      <source>Queue track</source>
-      <translation>Setja lag í biðröð</translation>
-    </message>
-    <message>
-      <source>Queue to play next</source>
-      <translation>Setja í biðröð til að spila næst</translation>
-    </message>
-    <message>
       <source>Remove from favorites</source>
       <translation>Fjarlægja úr eftirlætum</translation>
     </message>
@@ -7111,6 +7094,40 @@ Ertu viss um að þú viljir halda áfram?</translation>
     <message>
       <source>Refresh catalogue</source>
       <translation>Endurlesa yfirlitsskrá</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingFavoritesView</name>
+    <message>
+      <source>Streaming Tabs View</source>
+      <translation>Streymisflipasýn</translation>
+    </message>
+    <message>
+      <source>Artists</source>
+      <translation>Flytjendur</translation>
+    </message>
+    <message>
+      <source>Albums</source>
+      <translation>Hljómplötur</translation>
+    </message>
+    <message>
+      <source>Songs</source>
+      <translation>Lög</translation>
+    </message>
+    <message>
+      <source>Search</source>
+      <translation>Leita</translation>
+    </message>
+    <message>
+      <source>Configure %1...</source>
+      <translation>Stilla %1...</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingLibraryView</name>
+    <message>
+      <source>Configure %1...</source>
+      <translation>Grunnstilla %1...</translation>
     </message>
   </context>
   <context>
@@ -7185,40 +7202,6 @@ Ertu viss um að þú viljir halda áfram?</translation>
     <message>
       <source>Group by</source>
       <translation>Hópa eftir</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingSongsView</name>
-    <message>
-      <source>Configure %1...</source>
-      <translation>Grunnstilla %1...</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingTabsView</name>
-    <message>
-      <source>Streaming Tabs View</source>
-      <translation>Streymisflipasýn</translation>
-    </message>
-    <message>
-      <source>Artists</source>
-      <translation>Flytjendur</translation>
-    </message>
-    <message>
-      <source>Albums</source>
-      <translation>Hljómplötur</translation>
-    </message>
-    <message>
-      <source>Songs</source>
-      <translation>Lög</translation>
-    </message>
-    <message>
-      <source>Search</source>
-      <translation>Leita</translation>
-    </message>
-    <message>
-      <source>Configure %1...</source>
-      <translation>Stilla %1...</translation>
     </message>
   </context>
   <context>

@@ -1361,15 +1361,7 @@ Se non ci saranno corrispondenze, userà l&apos;immagine più grande che si trov
     </message>
   </context>
   <context>
-    <name>CollectionView</name>
-    <message>
-      <source>Your collection is empty!</source>
-      <translation>La raccolta è vuota!</translation>
-    </message>
-    <message>
-      <source>Click here to add some music</source>
-      <translation>Fai clic qui per aggiungere della musica</translation>
-    </message>
+    <name>CollectionTreeView</name>
     <message>
       <source>Append to current playlist</source>
       <translation>Aggiungi alla playlist attuale</translation>
@@ -1393,6 +1385,17 @@ Se non ci saranno corrispondenze, userà l&apos;immagine più grande che si trov
     <message>
       <source>Search for this</source>
       <translation>Cerca questo</translation>
+    </message>
+  </context>
+  <context>
+    <name>CollectionView</name>
+    <message>
+      <source>Your collection is empty!</source>
+      <translation>La raccolta è vuota!</translation>
+    </message>
+    <message>
+      <source>Click here to add some music</source>
+      <translation>Fai clic qui per aggiungere della musica</translation>
     </message>
     <message>
       <source>Organize files...</source>
@@ -7074,26 +7077,6 @@ Esistono diversi tipi di playlist intelligenti che offrono diversi modi di selez
       <translation>Fai clic qui per recuperare la musica</translation>
     </message>
     <message>
-      <source>Append to current playlist</source>
-      <translation>Aggiungi alla playlist attuale</translation>
-    </message>
-    <message>
-      <source>Replace current playlist</source>
-      <translation>Sostituisci playlist attuale</translation>
-    </message>
-    <message>
-      <source>Open in new playlist</source>
-      <translation>Apri in nuova playlist</translation>
-    </message>
-    <message>
-      <source>Queue track</source>
-      <translation>Accoda la traccia</translation>
-    </message>
-    <message>
-      <source>Queue to play next</source>
-      <translation>Accoda cosa riprodurre dopo</translation>
-    </message>
-    <message>
       <source>Remove from favorites</source>
       <translation>Rimuovi dai preferiti</translation>
     </message>
@@ -7115,6 +7098,40 @@ Esistono diversi tipi di playlist intelligenti che offrono diversi modi di selez
     <message>
       <source>Refresh catalogue</source>
       <translation>Aggiorna catalogo</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingFavoritesView</name>
+    <message>
+      <source>Streaming Tabs View</source>
+      <translation type="unfinished">Streaming Tabs View</translation>
+    </message>
+    <message>
+      <source>Artists</source>
+      <translation>Artisti</translation>
+    </message>
+    <message>
+      <source>Albums</source>
+      <translation>Album</translation>
+    </message>
+    <message>
+      <source>Songs</source>
+      <translation>Brani</translation>
+    </message>
+    <message>
+      <source>Search</source>
+      <translation>Cerca</translation>
+    </message>
+    <message>
+      <source>Configure %1...</source>
+      <translation>Configura %1...</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingLibraryView</name>
+    <message>
+      <source>Configure %1...</source>
+      <translation>Configura %1...</translation>
     </message>
   </context>
   <context>
@@ -7189,40 +7206,6 @@ Esistono diversi tipi di playlist intelligenti che offrono diversi modi di selez
     <message>
       <source>Group by</source>
       <translation>Raggruppa per</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingSongsView</name>
-    <message>
-      <source>Configure %1...</source>
-      <translation>Configura %1...</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingTabsView</name>
-    <message>
-      <source>Streaming Tabs View</source>
-      <translation type="unfinished">Streaming Tabs View</translation>
-    </message>
-    <message>
-      <source>Artists</source>
-      <translation>Artisti</translation>
-    </message>
-    <message>
-      <source>Albums</source>
-      <translation>Album</translation>
-    </message>
-    <message>
-      <source>Songs</source>
-      <translation>Brani</translation>
-    </message>
-    <message>
-      <source>Search</source>
-      <translation>Cerca</translation>
-    </message>
-    <message>
-      <source>Configure %1...</source>
-      <translation>Configura %1...</translation>
     </message>
   </context>
   <context>

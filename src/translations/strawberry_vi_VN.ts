@@ -1361,15 +1361,7 @@ Nếu không có kết quả trùng khớp thì nó sẽ sử dụng hình ảnh
     </message>
   </context>
   <context>
-    <name>CollectionView</name>
-    <message>
-      <source>Your collection is empty!</source>
-      <translation>Bộ sưu tập của bạn trống rỗng!</translation>
-    </message>
-    <message>
-      <source>Click here to add some music</source>
-      <translation>Nhấn vào đây để thêm nhạc</translation>
-    </message>
+    <name>CollectionTreeView</name>
     <message>
       <source>Append to current playlist</source>
       <translation>Thêm vào danh sách phát hiện tại</translation>
@@ -1393,6 +1385,17 @@ Nếu không có kết quả trùng khớp thì nó sẽ sử dụng hình ảnh
     <message>
       <source>Search for this</source>
       <translation>Tìm kiếm cái này</translation>
+    </message>
+  </context>
+  <context>
+    <name>CollectionView</name>
+    <message>
+      <source>Your collection is empty!</source>
+      <translation>Bộ sưu tập của bạn trống rỗng!</translation>
+    </message>
+    <message>
+      <source>Click here to add some music</source>
+      <translation>Nhấn vào đây để thêm nhạc</translation>
     </message>
     <message>
       <source>Organize files...</source>
@@ -7065,26 +7068,6 @@ Bạn có chắc chắn muốn tiếp tục không?</translation>
       <translation>Nhấp vào đây để lấy nhạc</translation>
     </message>
     <message>
-      <source>Append to current playlist</source>
-      <translation>Thêm vào danh sách phát hiện tại</translation>
-    </message>
-    <message>
-      <source>Replace current playlist</source>
-      <translation>Thay thế danh sách phát hiện tại</translation>
-    </message>
-    <message>
-      <source>Open in new playlist</source>
-      <translation>Mở trong danh sách phát mới</translation>
-    </message>
-    <message>
-      <source>Queue track</source>
-      <translation>Thêm vào hàng đợi</translation>
-    </message>
-    <message>
-      <source>Queue to play next</source>
-      <translation>Xếp phát tiếp theo</translation>
-    </message>
-    <message>
       <source>Remove from favorites</source>
       <translation>Xóa khỏi yêu thích</translation>
     </message>
@@ -7106,6 +7089,40 @@ Bạn có chắc chắn muốn tiếp tục không?</translation>
     <message>
       <source>Refresh catalogue</source>
       <translation>Làm mới danh mục</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingFavoritesView</name>
+    <message>
+      <source>Streaming Tabs View</source>
+      <translation>Khung thẻ phát trực tuyến</translation>
+    </message>
+    <message>
+      <source>Artists</source>
+      <translation>Nghệ sĩ</translation>
+    </message>
+    <message>
+      <source>Albums</source>
+      <translation>Album</translation>
+    </message>
+    <message>
+      <source>Songs</source>
+      <translation>Bài hát</translation>
+    </message>
+    <message>
+      <source>Search</source>
+      <translation>Tìm kiếm</translation>
+    </message>
+    <message>
+      <source>Configure %1...</source>
+      <translation>Cấu hình %1...</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingLibraryView</name>
+    <message>
+      <source>Configure %1...</source>
+      <translation>Cấu hình %1...</translation>
     </message>
   </context>
   <context>
@@ -7180,40 +7197,6 @@ Bạn có chắc chắn muốn tiếp tục không?</translation>
     <message>
       <source>Group by</source>
       <translation>Nhóm theo</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingSongsView</name>
-    <message>
-      <source>Configure %1...</source>
-      <translation>Cấu hình %1...</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingTabsView</name>
-    <message>
-      <source>Streaming Tabs View</source>
-      <translation>Khung thẻ phát trực tuyến</translation>
-    </message>
-    <message>
-      <source>Artists</source>
-      <translation>Nghệ sĩ</translation>
-    </message>
-    <message>
-      <source>Albums</source>
-      <translation>Album</translation>
-    </message>
-    <message>
-      <source>Songs</source>
-      <translation>Bài hát</translation>
-    </message>
-    <message>
-      <source>Search</source>
-      <translation>Tìm kiếm</translation>
-    </message>
-    <message>
-      <source>Configure %1...</source>
-      <translation>Cấu hình %1...</translation>
     </message>
   </context>
   <context>

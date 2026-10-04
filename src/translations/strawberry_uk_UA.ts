@@ -1361,15 +1361,7 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
   </context>
   <context>
-    <name>CollectionView</name>
-    <message>
-      <source>Your collection is empty!</source>
-      <translation>Ваша фонотека порожня!</translation>
-    </message>
-    <message>
-      <source>Click here to add some music</source>
-      <translation>Клацніть тут, щоб додати музику</translation>
-    </message>
+    <name>CollectionTreeView</name>
     <message>
       <source>Append to current playlist</source>
       <translation>Додати до списку відтворення</translation>
@@ -1393,6 +1385,17 @@ If there are no matches then it will use the largest image in the directory.</so
     <message>
       <source>Search for this</source>
       <translation>Шукати наступне</translation>
+    </message>
+  </context>
+  <context>
+    <name>CollectionView</name>
+    <message>
+      <source>Your collection is empty!</source>
+      <translation>Ваша фонотека порожня!</translation>
+    </message>
+    <message>
+      <source>Click here to add some music</source>
+      <translation>Клацніть тут, щоб додати музику</translation>
     </message>
     <message>
       <source>Organize files...</source>
@@ -7080,26 +7083,6 @@ Are you sure you want to continue?</source>
       <translation>Клацніть тут, щоб отримати музику</translation>
     </message>
     <message>
-      <source>Append to current playlist</source>
-      <translation>Додати до списку відтворення</translation>
-    </message>
-    <message>
-      <source>Replace current playlist</source>
-      <translation>Замінити список відтворення</translation>
-    </message>
-    <message>
-      <source>Open in new playlist</source>
-      <translation>Відкрити у новому списку відтворення</translation>
-    </message>
-    <message>
-      <source>Queue track</source>
-      <translation>Додати до черги</translation>
-    </message>
-    <message>
-      <source>Queue to play next</source>
-      <translation>Відтворити наступним</translation>
-    </message>
-    <message>
       <source>Remove from favorites</source>
       <translation>Вилучити з улюблених</translation>
     </message>
@@ -7121,6 +7104,40 @@ Are you sure you want to continue?</source>
     <message>
       <source>Refresh catalogue</source>
       <translation>Оновити каталог</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingFavoritesView</name>
+    <message>
+      <source>Streaming Tabs View</source>
+      <translation>Подання з вкладками трансляцій</translation>
+    </message>
+    <message>
+      <source>Artists</source>
+      <translation>Виконавці</translation>
+    </message>
+    <message>
+      <source>Albums</source>
+      <translation>Альбоми</translation>
+    </message>
+    <message>
+      <source>Songs</source>
+      <translation>Композиції</translation>
+    </message>
+    <message>
+      <source>Search</source>
+      <translation>Пошук</translation>
+    </message>
+    <message>
+      <source>Configure %1...</source>
+      <translation>Налаштувати %1...</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingLibraryView</name>
+    <message>
+      <source>Configure %1...</source>
+      <translation>Налаштувати %1...</translation>
     </message>
   </context>
   <context>
@@ -7195,40 +7212,6 @@ Are you sure you want to continue?</source>
     <message>
       <source>Group by</source>
       <translation>Групувати за</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingSongsView</name>
-    <message>
-      <source>Configure %1...</source>
-      <translation>Налаштувати %1...</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingTabsView</name>
-    <message>
-      <source>Streaming Tabs View</source>
-      <translation>Подання з вкладками трансляцій</translation>
-    </message>
-    <message>
-      <source>Artists</source>
-      <translation>Виконавці</translation>
-    </message>
-    <message>
-      <source>Albums</source>
-      <translation>Альбоми</translation>
-    </message>
-    <message>
-      <source>Songs</source>
-      <translation>Композиції</translation>
-    </message>
-    <message>
-      <source>Search</source>
-      <translation>Пошук</translation>
-    </message>
-    <message>
-      <source>Configure %1...</source>
-      <translation>Налаштувати %1...</translation>
     </message>
   </context>
   <context>

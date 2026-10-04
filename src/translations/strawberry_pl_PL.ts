@@ -1361,15 +1361,7 @@ W przypadku braku takich plików użyty zostanie największy obraz z danego kata
     </message>
   </context>
   <context>
-    <name>CollectionView</name>
-    <message>
-      <source>Your collection is empty!</source>
-      <translation>Twoja kolekcja jest pusta!</translation>
-    </message>
-    <message>
-      <source>Click here to add some music</source>
-      <translation>Kliknij tutaj, aby dodać jakąś muzykę</translation>
-    </message>
+    <name>CollectionTreeView</name>
     <message>
       <source>Append to current playlist</source>
       <translation>Dołącz do aktualnej listy odtwarzania</translation>
@@ -1393,6 +1385,17 @@ W przypadku braku takich plików użyty zostanie największy obraz z danego kata
     <message>
       <source>Search for this</source>
       <translation>Szukaj tego:</translation>
+    </message>
+  </context>
+  <context>
+    <name>CollectionView</name>
+    <message>
+      <source>Your collection is empty!</source>
+      <translation>Twoja kolekcja jest pusta!</translation>
+    </message>
+    <message>
+      <source>Click here to add some music</source>
+      <translation>Kliknij tutaj, aby dodać jakąś muzykę</translation>
     </message>
     <message>
       <source>Organize files...</source>
@@ -7082,26 +7085,6 @@ Na pewno chcesz usunąć?</translation>
       <translation>Kliknij tutaj, aby pobrać&#xa0;muzykę</translation>
     </message>
     <message>
-      <source>Append to current playlist</source>
-      <translation>Dołącz do aktualnej listy odtwarzania</translation>
-    </message>
-    <message>
-      <source>Replace current playlist</source>
-      <translation>Zastąp aktualną listę odtwarzania</translation>
-    </message>
-    <message>
-      <source>Open in new playlist</source>
-      <translation>Otwórz w nowej liście odtwarzania</translation>
-    </message>
-    <message>
-      <source>Queue track</source>
-      <translation>Dodaj ścieżkę do kolejki</translation>
-    </message>
-    <message>
-      <source>Queue to play next</source>
-      <translation>Dodaj do kolejki, aby następnie odtworzyć</translation>
-    </message>
-    <message>
       <source>Remove from favorites</source>
       <translation>Usuń z ulubionych</translation>
     </message>
@@ -7123,6 +7106,40 @@ Na pewno chcesz usunąć?</translation>
     <message>
       <source>Refresh catalogue</source>
       <translation>Odśwież&#xa0;katalog</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingFavoritesView</name>
+    <message>
+      <source>Streaming Tabs View</source>
+      <translation type="unfinished">Streaming Tabs View</translation>
+    </message>
+    <message>
+      <source>Artists</source>
+      <translation>Artyści</translation>
+    </message>
+    <message>
+      <source>Albums</source>
+      <translation>Albumy</translation>
+    </message>
+    <message>
+      <source>Songs</source>
+      <translation>Utwory</translation>
+    </message>
+    <message>
+      <source>Search</source>
+      <translation>Szukaj</translation>
+    </message>
+    <message>
+      <source>Configure %1...</source>
+      <translation>Skonfiguruj %1…</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingLibraryView</name>
+    <message>
+      <source>Configure %1...</source>
+      <translation>Skonfiguruj %1…</translation>
     </message>
   </context>
   <context>
@@ -7197,40 +7214,6 @@ Na pewno chcesz usunąć?</translation>
     <message>
       <source>Group by</source>
       <translation>Grupuj według</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingSongsView</name>
-    <message>
-      <source>Configure %1...</source>
-      <translation>Skonfiguruj %1…</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingTabsView</name>
-    <message>
-      <source>Streaming Tabs View</source>
-      <translation type="unfinished">Streaming Tabs View</translation>
-    </message>
-    <message>
-      <source>Artists</source>
-      <translation>Artyści</translation>
-    </message>
-    <message>
-      <source>Albums</source>
-      <translation>Albumy</translation>
-    </message>
-    <message>
-      <source>Songs</source>
-      <translation>Utwory</translation>
-    </message>
-    <message>
-      <source>Search</source>
-      <translation>Szukaj</translation>
-    </message>
-    <message>
-      <source>Configure %1...</source>
-      <translation>Skonfiguruj %1…</translation>
     </message>
   </context>
   <context>

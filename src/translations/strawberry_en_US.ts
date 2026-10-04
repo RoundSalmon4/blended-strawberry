@@ -1360,15 +1360,7 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
 </context>
 <context>
-    <name>CollectionView</name>
-    <message>
-        <source>Your collection is empty!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Click here to add some music</source>
-        <translation type="unfinished"></translation>
-    </message>
+    <name>CollectionTreeView</name>
     <message>
         <source>Append to current playlist</source>
         <translation type="unfinished"></translation>
@@ -1391,6 +1383,17 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
     <message>
         <source>Search for this</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CollectionView</name>
+    <message>
+        <source>Your collection is empty!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Click here to add some music</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -7494,26 +7497,6 @@ Are you sure you want to continue?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Append to current playlist</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Replace current playlist</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Open in new playlist</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Queue track</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Queue to play next</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Remove from favorites</source>
         <translation type="unfinished"></translation>
     </message>
@@ -7534,6 +7517,40 @@ Are you sure you want to continue?</source>
     </message>
     <message>
         <source>Refresh catalogue</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>StreamingFavoritesView</name>
+    <message>
+        <source>Streaming Tabs View</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Artists</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Albums</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Songs</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Configure %1...</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>StreamingLibraryView</name>
+    <message>
+        <source>Configure %1...</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -7608,40 +7625,6 @@ Are you sure you want to continue?</source>
     </message>
     <message>
         <source>Group by</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>StreamingSongsView</name>
-    <message>
-        <source>Configure %1...</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>StreamingTabsView</name>
-    <message>
-        <source>Streaming Tabs View</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Artists</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Albums</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Songs</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Configure %1...</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

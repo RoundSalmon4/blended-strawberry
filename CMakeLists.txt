@@ -110,7 +110,6 @@ endif()
 add_compile_options(${COMPILE_OPTIONS})
 
 add_definitions(
-  -DBOOST_BIND_NO_PLACEHOLDERS
   -DQT_STRICT_ITERATORS
   -DQT_NO_CAST_FROM_BYTEARRAY
   -DQT_USE_QSTRINGBUILDER
@@ -169,10 +168,6 @@ endif()
 find_package(OpenSSL COMPONENTS Crypto CONFIG)
 if(NOT OpenSSL_FOUND)
   find_package(OpenSSL COMPONENTS Crypto REQUIRED)
-endif()
-find_package(Boost CONFIG)
-if(NOT Boost_FOUND)
-  find_package(Boost REQUIRED)
 endif()
 find_package(ICU COMPONENTS uc i18n REQUIRED)
 if(UNIX AND NOT APPLE)
@@ -614,6 +609,7 @@ set(SOURCES
   src/collection/collectionbackend.cpp
   src/collection/collectionwatcher.cpp
   src/collection/collectionview.cpp
+  src/collection/collectiontreeview.cpp
   src/collection/collectionitem.cpp
   src/collection/collectionitemdelegate.cpp
   src/collection/collectionviewcontainer.cpp
@@ -803,8 +799,8 @@ set(SOURCES
   src/streaming/streamingsearchmodel.cpp
   src/streaming/streamingsearchsortmodel.cpp
   src/streaming/streamingsearchitemdelegate.cpp
-  src/streaming/streamingsongsview.cpp
-  src/streaming/streamingtabsview.cpp
+  src/streaming/streaminglibraryview.cpp
+  src/streaming/streamingfavoritesview.cpp
   src/streaming/streamingcollectionview.cpp
   src/streaming/streamingcollectionviewcontainer.cpp
   src/streaming/streamingsearchview.cpp
@@ -940,6 +936,7 @@ set(HEADERS
   src/collection/collectionbackend.h
   src/collection/collectionwatcher.h
   src/collection/collectionview.h
+  src/collection/collectiontreeview.h
   src/collection/collectionitemdelegate.h
   src/collection/collectionviewcontainer.h
   src/collection/collectiondirectorymodel.h
@@ -1106,8 +1103,8 @@ set(HEADERS
   src/streaming/streamingsearchsortmodel.h
   src/streaming/streamingsearchitemdelegate.h
   src/streaming/streamingsearchview.h
-  src/streaming/streamingsongsview.h
-  src/streaming/streamingtabsview.h
+  src/streaming/streaminglibraryview.h
+  src/streaming/streamingfavoritesview.h
   src/streaming/streamingcollectionview.h
   src/streaming/streamingcollectionviewcontainer.h
 
@@ -1229,7 +1226,7 @@ set(UI
 
   src/osd/osdpretty.ui
 
-  src/streaming/streamingtabsview.ui
+  src/streaming/streamingfavoritesview.ui
   src/streaming/streamingcollectionviewcontainer.ui
   src/streaming/streamingsearchview.ui
 

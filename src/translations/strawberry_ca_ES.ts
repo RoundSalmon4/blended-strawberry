@@ -1361,15 +1361,7 @@ Si no hi ha resultats, s’usarà la imatge més gran en el directori.</translat
     </message>
   </context>
   <context>
-    <name>CollectionView</name>
-    <message>
-      <source>Your collection is empty!</source>
-      <translation>La vostra col·lecció està buida.</translation>
-    </message>
-    <message>
-      <source>Click here to add some music</source>
-      <translation>Feu clic aquí per afegir música</translation>
-    </message>
+    <name>CollectionTreeView</name>
     <message>
       <source>Append to current playlist</source>
       <translation>Afegeix a la llista de reproducció actual</translation>
@@ -1393,6 +1385,17 @@ Si no hi ha resultats, s’usarà la imatge més gran en el directori.</translat
     <message>
       <source>Search for this</source>
       <translation>Cerca-ho</translation>
+    </message>
+  </context>
+  <context>
+    <name>CollectionView</name>
+    <message>
+      <source>Your collection is empty!</source>
+      <translation>La vostra col·lecció està buida.</translation>
+    </message>
+    <message>
+      <source>Click here to add some music</source>
+      <translation>Feu clic aquí per afegir música</translation>
     </message>
     <message>
       <source>Organize files...</source>
@@ -7070,26 +7073,6 @@ Esteu segur que voleu continuar?</translation>
       <translation type="unfinished">Click here to retrieve music</translation>
     </message>
     <message>
-      <source>Append to current playlist</source>
-      <translation>Afegeix a la llista de reproducció actual</translation>
-    </message>
-    <message>
-      <source>Replace current playlist</source>
-      <translation>Substitueix la llista de reproducció actual</translation>
-    </message>
-    <message>
-      <source>Open in new playlist</source>
-      <translation>Obre en una llista de reproducció nova</translation>
-    </message>
-    <message>
-      <source>Queue track</source>
-      <translation>Afegeix la peça a la cua</translation>
-    </message>
-    <message>
-      <source>Queue to play next</source>
-      <translation type="unfinished">Queue to play next</translation>
-    </message>
-    <message>
       <source>Remove from favorites</source>
       <translation type="unfinished">Remove from favorites</translation>
     </message>
@@ -7111,6 +7094,40 @@ Esteu segur que voleu continuar?</translation>
     <message>
       <source>Refresh catalogue</source>
       <translation type="unfinished">Refresh catalogue</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingFavoritesView</name>
+    <message>
+      <source>Streaming Tabs View</source>
+      <translation type="unfinished">Streaming Tabs View</translation>
+    </message>
+    <message>
+      <source>Artists</source>
+      <translation type="unfinished">Artists</translation>
+    </message>
+    <message>
+      <source>Albums</source>
+      <translation>Àlbums</translation>
+    </message>
+    <message>
+      <source>Songs</source>
+      <translation type="unfinished">Songs</translation>
+    </message>
+    <message>
+      <source>Search</source>
+      <translation>Cerca</translation>
+    </message>
+    <message>
+      <source>Configure %1...</source>
+      <translation>Configura %1…</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingLibraryView</name>
+    <message>
+      <source>Configure %1...</source>
+      <translation>Configura %1…</translation>
     </message>
   </context>
   <context>
@@ -7185,40 +7202,6 @@ Esteu segur que voleu continuar?</translation>
     <message>
       <source>Group by</source>
       <translation>Agrupa per</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingSongsView</name>
-    <message>
-      <source>Configure %1...</source>
-      <translation>Configura %1…</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingTabsView</name>
-    <message>
-      <source>Streaming Tabs View</source>
-      <translation type="unfinished">Streaming Tabs View</translation>
-    </message>
-    <message>
-      <source>Artists</source>
-      <translation type="unfinished">Artists</translation>
-    </message>
-    <message>
-      <source>Albums</source>
-      <translation>Àlbums</translation>
-    </message>
-    <message>
-      <source>Songs</source>
-      <translation type="unfinished">Songs</translation>
-    </message>
-    <message>
-      <source>Search</source>
-      <translation>Cerca</translation>
-    </message>
-    <message>
-      <source>Configure %1...</source>
-      <translation>Configura %1…</translation>
     </message>
   </context>
   <context>

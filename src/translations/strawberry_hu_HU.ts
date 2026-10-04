@@ -1361,15 +1361,7 @@ Ha nincs egyezés, akkor a legnagyobb képet veszi a könyvtárból.</translatio
     </message>
   </context>
   <context>
-    <name>CollectionView</name>
-    <message>
-      <source>Your collection is empty!</source>
-      <translation>Az Ön gyűjteménye üres.</translation>
-    </message>
-    <message>
-      <source>Click here to add some music</source>
-      <translation>Zene hozzáadásához kattintson ide</translation>
-    </message>
+    <name>CollectionTreeView</name>
     <message>
       <source>Append to current playlist</source>
       <translation>Hozzáfűzés a jelenlegi lejátszólistához</translation>
@@ -1393,6 +1385,17 @@ Ha nincs egyezés, akkor a legnagyobb képet veszi a könyvtárból.</translatio
     <message>
       <source>Search for this</source>
       <translation>Keresés erre</translation>
+    </message>
+  </context>
+  <context>
+    <name>CollectionView</name>
+    <message>
+      <source>Your collection is empty!</source>
+      <translation>Az Ön gyűjteménye üres.</translation>
+    </message>
+    <message>
+      <source>Click here to add some music</source>
+      <translation>Zene hozzáadásához kattintson ide</translation>
     </message>
     <message>
       <source>Organize files...</source>
@@ -7071,26 +7074,6 @@ másodpercnél hosszabbak, illetve legalább a felükig vagy 4 percig vannak lej
       <translation>Kattintson ide a zenék lekéréséhez</translation>
     </message>
     <message>
-      <source>Append to current playlist</source>
-      <translation>Hozzáfűzés a jelenlegi lejátszólistához</translation>
-    </message>
-    <message>
-      <source>Replace current playlist</source>
-      <translation>Jelenlegi lejátszólista cseréje</translation>
-    </message>
-    <message>
-      <source>Open in new playlist</source>
-      <translation>Megnyitás új lejátszólistában</translation>
-    </message>
-    <message>
-      <source>Queue track</source>
-      <translation>Szám hozzáadása a lejátszási sorhoz</translation>
-    </message>
-    <message>
-      <source>Queue to play next</source>
-      <translation>Lejátszás következőként</translation>
-    </message>
-    <message>
       <source>Remove from favorites</source>
       <translation>Eltávolítás a kedvencek közül</translation>
     </message>
@@ -7112,6 +7095,40 @@ másodpercnél hosszabbak, illetve legalább a felükig vagy 4 percig vannak lej
     <message>
       <source>Refresh catalogue</source>
       <translation>Katalógus frissítése</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingFavoritesView</name>
+    <message>
+      <source>Streaming Tabs View</source>
+      <translation type="unfinished">Streaming Tabs View</translation>
+    </message>
+    <message>
+      <source>Artists</source>
+      <translation>Előadók</translation>
+    </message>
+    <message>
+      <source>Albums</source>
+      <translation>Albumok</translation>
+    </message>
+    <message>
+      <source>Songs</source>
+      <translation>Számok</translation>
+    </message>
+    <message>
+      <source>Search</source>
+      <translation>Keresés</translation>
+    </message>
+    <message>
+      <source>Configure %1...</source>
+      <translation>%1 beállítása…</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingLibraryView</name>
+    <message>
+      <source>Configure %1...</source>
+      <translation>%1 beállítása…</translation>
     </message>
   </context>
   <context>
@@ -7186,40 +7203,6 @@ másodpercnél hosszabbak, illetve legalább a felükig vagy 4 percig vannak lej
     <message>
       <source>Group by</source>
       <translation>Csoportosítás</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingSongsView</name>
-    <message>
-      <source>Configure %1...</source>
-      <translation>%1 beállítása…</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingTabsView</name>
-    <message>
-      <source>Streaming Tabs View</source>
-      <translation type="unfinished">Streaming Tabs View</translation>
-    </message>
-    <message>
-      <source>Artists</source>
-      <translation>Előadók</translation>
-    </message>
-    <message>
-      <source>Albums</source>
-      <translation>Albumok</translation>
-    </message>
-    <message>
-      <source>Songs</source>
-      <translation>Számok</translation>
-    </message>
-    <message>
-      <source>Search</source>
-      <translation>Keresés</translation>
-    </message>
-    <message>
-      <source>Configure %1...</source>
-      <translation>%1 beállítása…</translation>
     </message>
   </context>
   <context>

@@ -1360,15 +1360,7 @@ If there are no matches then it will use the largest image in the directory.</so
     </message>
   </context>
   <context>
-    <name>CollectionView</name>
-    <message>
-      <source>Your collection is empty!</source>
-      <translation>Koleksiyonunuz boş!</translation>
-    </message>
-    <message>
-      <source>Click here to add some music</source>
-      <translation>Biraz müzik eklemek için buraya tıklayın</translation>
-    </message>
+    <name>CollectionTreeView</name>
     <message>
       <source>Append to current playlist</source>
       <translation>Geçerli çalma listesine ekle</translation>
@@ -1392,6 +1384,17 @@ If there are no matches then it will use the largest image in the directory.</so
     <message>
       <source>Search for this</source>
       <translation>Bunun için ara</translation>
+    </message>
+  </context>
+  <context>
+    <name>CollectionView</name>
+    <message>
+      <source>Your collection is empty!</source>
+      <translation>Koleksiyonunuz boş!</translation>
+    </message>
+    <message>
+      <source>Click here to add some music</source>
+      <translation>Biraz müzik eklemek için buraya tıklayın</translation>
     </message>
     <message>
       <source>Organize files...</source>
@@ -7069,26 +7072,6 @@ Devam etmek istediğinizden emin misiniz?</translation>
       <translation>Müziğinizi geri getirmek için tıklayın</translation>
     </message>
     <message>
-      <source>Append to current playlist</source>
-      <translation>Geçerli çalma listesine ekle</translation>
-    </message>
-    <message>
-      <source>Replace current playlist</source>
-      <translation>Geçerli çalma listesinin yerine koy</translation>
-    </message>
-    <message>
-      <source>Open in new playlist</source>
-      <translation>Yeni çalma listesinde aç</translation>
-    </message>
-    <message>
-      <source>Queue track</source>
-      <translation>Çalma sırasına ekle</translation>
-    </message>
-    <message>
-      <source>Queue to play next</source>
-      <translation>Sıradaki yap</translation>
-    </message>
-    <message>
       <source>Remove from favorites</source>
       <translation>Beğenilenlerden kaldır</translation>
     </message>
@@ -7110,6 +7093,40 @@ Devam etmek istediğinizden emin misiniz?</translation>
     <message>
       <source>Refresh catalogue</source>
       <translation type="unfinished">Refresh catalogue</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingFavoritesView</name>
+    <message>
+      <source>Streaming Tabs View</source>
+      <translation type="unfinished">Streaming Tabs View</translation>
+    </message>
+    <message>
+      <source>Artists</source>
+      <translation>Sanatçılar</translation>
+    </message>
+    <message>
+      <source>Albums</source>
+      <translation>Albümler</translation>
+    </message>
+    <message>
+      <source>Songs</source>
+      <translation>Şarkılar</translation>
+    </message>
+    <message>
+      <source>Search</source>
+      <translation>Ara</translation>
+    </message>
+    <message>
+      <source>Configure %1...</source>
+      <translation>%1 yapılandır...</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingLibraryView</name>
+    <message>
+      <source>Configure %1...</source>
+      <translation>%1 yapılandır...</translation>
     </message>
   </context>
   <context>
@@ -7184,40 +7201,6 @@ Devam etmek istediğinizden emin misiniz?</translation>
     <message>
       <source>Group by</source>
       <translation>Grupla</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingSongsView</name>
-    <message>
-      <source>Configure %1...</source>
-      <translation>%1 yapılandır...</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingTabsView</name>
-    <message>
-      <source>Streaming Tabs View</source>
-      <translation type="unfinished">Streaming Tabs View</translation>
-    </message>
-    <message>
-      <source>Artists</source>
-      <translation>Sanatçılar</translation>
-    </message>
-    <message>
-      <source>Albums</source>
-      <translation>Albümler</translation>
-    </message>
-    <message>
-      <source>Songs</source>
-      <translation>Şarkılar</translation>
-    </message>
-    <message>
-      <source>Search</source>
-      <translation>Ara</translation>
-    </message>
-    <message>
-      <source>Configure %1...</source>
-      <translation>%1 yapılandır...</translation>
     </message>
   </context>
   <context>

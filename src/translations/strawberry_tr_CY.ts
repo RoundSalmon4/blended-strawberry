@@ -1361,15 +1361,7 @@ If there are no matches then it will use the largest image in the directory.</tr
     </message>
   </context>
   <context>
-    <name>CollectionView</name>
-    <message>
-      <source>Your collection is empty!</source>
-      <translation type="unfinished">Your collection is empty!</translation>
-    </message>
-    <message>
-      <source>Click here to add some music</source>
-      <translation type="unfinished">Click here to add some music</translation>
-    </message>
+    <name>CollectionTreeView</name>
     <message>
       <source>Append to current playlist</source>
       <translation type="unfinished">Append to current playlist</translation>
@@ -1393,6 +1385,17 @@ If there are no matches then it will use the largest image in the directory.</tr
     <message>
       <source>Search for this</source>
       <translation type="unfinished">Search for this</translation>
+    </message>
+  </context>
+  <context>
+    <name>CollectionView</name>
+    <message>
+      <source>Your collection is empty!</source>
+      <translation type="unfinished">Your collection is empty!</translation>
+    </message>
+    <message>
+      <source>Click here to add some music</source>
+      <translation type="unfinished">Click here to add some music</translation>
     </message>
     <message>
       <source>Organize files...</source>
@@ -7070,26 +7073,6 @@ Are you sure you want to continue?</translation>
       <translation type="unfinished">Click here to retrieve music</translation>
     </message>
     <message>
-      <source>Append to current playlist</source>
-      <translation type="unfinished">Append to current playlist</translation>
-    </message>
-    <message>
-      <source>Replace current playlist</source>
-      <translation type="unfinished">Replace current playlist</translation>
-    </message>
-    <message>
-      <source>Open in new playlist</source>
-      <translation type="unfinished">Open in new playlist</translation>
-    </message>
-    <message>
-      <source>Queue track</source>
-      <translation type="unfinished">Queue track</translation>
-    </message>
-    <message>
-      <source>Queue to play next</source>
-      <translation type="unfinished">Queue to play next</translation>
-    </message>
-    <message>
       <source>Remove from favorites</source>
       <translation type="unfinished">Remove from favorites</translation>
     </message>
@@ -7111,6 +7094,40 @@ Are you sure you want to continue?</translation>
     <message>
       <source>Refresh catalogue</source>
       <translation type="unfinished">Refresh catalogue</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingFavoritesView</name>
+    <message>
+      <source>Streaming Tabs View</source>
+      <translation type="unfinished">Streaming Tabs View</translation>
+    </message>
+    <message>
+      <source>Artists</source>
+      <translation type="unfinished">Artists</translation>
+    </message>
+    <message>
+      <source>Albums</source>
+      <translation type="unfinished">Albums</translation>
+    </message>
+    <message>
+      <source>Songs</source>
+      <translation type="unfinished">Songs</translation>
+    </message>
+    <message>
+      <source>Search</source>
+      <translation type="unfinished">Search</translation>
+    </message>
+    <message>
+      <source>Configure %1...</source>
+      <translation type="unfinished">Configure %1...</translation>
+    </message>
+  </context>
+  <context>
+    <name>StreamingLibraryView</name>
+    <message>
+      <source>Configure %1...</source>
+      <translation type="unfinished">Configure %1...</translation>
     </message>
   </context>
   <context>
@@ -7185,40 +7202,6 @@ Are you sure you want to continue?</translation>
     <message>
       <source>Group by</source>
       <translation type="unfinished">Group by</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingSongsView</name>
-    <message>
-      <source>Configure %1...</source>
-      <translation type="unfinished">Configure %1...</translation>
-    </message>
-  </context>
-  <context>
-    <name>StreamingTabsView</name>
-    <message>
-      <source>Streaming Tabs View</source>
-      <translation type="unfinished">Streaming Tabs View</translation>
-    </message>
-    <message>
-      <source>Artists</source>
-      <translation type="unfinished">Artists</translation>
-    </message>
-    <message>
-      <source>Albums</source>
-      <translation type="unfinished">Albums</translation>
-    </message>
-    <message>
-      <source>Songs</source>
-      <translation type="unfinished">Songs</translation>
-    </message>
-    <message>
-      <source>Search</source>
-      <translation type="unfinished">Search</translation>
-    </message>
-    <message>
-      <source>Configure %1...</source>
-      <translation type="unfinished">Configure %1...</translation>
     </message>
   </context>
   <context>
