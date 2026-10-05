@@ -1,6 +1,6 @@
 /*
  * Strawberry Music Player
- * Copyright 2018-2026, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2026, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,27 +17,27 @@
  *
  */
 
-#ifndef LYRICSSEARCHRESULT_H
-#define LYRICSSEARCHRESULT_H
+#ifndef LRCUTILS_H
+#define LRCUTILS_H
 
-#include <QMetaType>
+#include <optional>
+
+#include <QtGlobal>
 #include <QList>
 #include <QString>
 
-class LyricsSearchResult {
- public:
-  explicit LyricsSearchResult(const QString &_lyrics = QString()) : lyrics(_lyrics), score(0.0) {}
-  QString provider;
-  QString artist;
-  QString album;
-  QString title;
-  QString lyrics;
-  QString synced_lyrics;
-  float score;
+namespace Utilities {
+
+struct LRCLine {
+  uint time;  // Absolute time in milliseconds.
+  QString text;
 };
-using LyricsSearchResults = QList<LyricsSearchResult>;
+using LRCLines = QList<LRCLine>;
 
-Q_DECLARE_METATYPE(LyricsSearchResult)
-Q_DECLARE_METATYPE(LyricsSearchResults)
+// Parses LRC into lines sorted by time, with lines that have multiple timestamps expanded and the offset tag applied.
+// Returns an empty list for empty input, and std::nullopt if the LRC is invalid.
+std::optional<LRCLines> ParseLRC(const QString &lrc);
 
-#endif  // LYRICSSEARCHRESULT_H
+}  // namespace Utilities
+
+#endif  // LRCUTILS_H
