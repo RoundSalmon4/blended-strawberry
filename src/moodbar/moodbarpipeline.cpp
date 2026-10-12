@@ -2,7 +2,7 @@
  * Strawberry Music Player
  * This file was part of Clementine.
  * Copyright 2012, David Sansome <me@davidsansome.com>
- * Copyright 2019-2025, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2019-2026, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,7 +57,8 @@ MoodbarPipeline::MoodbarPipeline(const QUrl &url, QObject *parent)
       pipeline_(nullptr),
       convert_element_(nullptr),
       success_(false),
-      running_(false) {}
+      running_(false),
+      error_received_(false) {}
 
 MoodbarPipeline::~MoodbarPipeline() {
 
@@ -234,6 +235,11 @@ GstBusSyncReply MoodbarPipeline::BusCallbackSync(GstBus *bus, GstMessage *messag
 
   MoodbarPipeline *instance = reinterpret_cast<MoodbarPipeline*>(self);
 
+  // Errors are remembered before checking if the pipeline is running, the end of the stream can stop the pipeline in another thread just before the error arrives.
+  if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_ERROR) {
+    instance->error_received_ = true;
+  }
+
   if (!instance->running_) return GST_BUS_PASS;
 
   switch (GST_MESSAGE_TYPE(message)) {
@@ -276,7 +282,8 @@ GstBusSyncReply MoodbarPipeline::BusCallbackSync(GstBus *bus, GstMessage *messag
 
 void MoodbarPipeline::Stop(const bool success) {
 
-  running_ = false;
+  // The end of the stream and errors can arrive in different streaming threads, only the first one that stops the pipeline finishes it.
+  if (!running_.exchange(false)) return;
 
   QMetaObject::invokeMethod(this, "Finish", Qt::QueuedConnection, Q_ARG(bool, success));
 
@@ -287,18 +294,19 @@ void MoodbarPipeline::Finish(const bool success) {
   Q_ASSERT(QThread::currentThread() == thread());
   Q_ASSERT(QThread::currentThread() != qApp->thread());
 
-  success_ = success;
-
   // Drive the pipeline to GST_STATE_NULL first so the streaming threads (which may still be invoking the spectrum output callback) are joined before we read and reset builder_.
   // Doing this the other way around races the callback against builder_.reset() and is a use-after-free.
   Cleanup();
+
+  // After joining the streaming threads, so an error that arrived while the end of the stream finished the pipeline is not missed.
+  success_ = success && !error_received_;
 
   if (builder_) {
     data_ = builder_->Finish(1000);
     builder_.reset();
   }
 
-  Q_EMIT Finished(success);
+  Q_EMIT Finished(success_);
 
 }
 

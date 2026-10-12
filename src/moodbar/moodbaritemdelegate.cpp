@@ -2,7 +2,7 @@
  * Strawberry Music Player
  * This file was part of Clementine.
  * Copyright 2012, David Sansome <me@davidsansome.com>
- * Copyright 2019-2025, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2019-2026, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -52,7 +52,7 @@
 
 using std::make_shared;
 
-MoodbarItemDelegate::Data::Data() : state_(State::None) {}
+MoodbarItemDelegate::Data::Data() : state_(State::None), reload_(false) {}
 
 MoodbarItemDelegate::MoodbarItemDelegate(const SharedPtr<MoodbarLoader> moodbar_loader, PlaylistView *playlist_view, QObject *parent)
     : QItemDelegate(parent),
@@ -114,19 +114,24 @@ QPixmap MoodbarItemDelegate::PixmapForIndex(const QModelIndex &idx, const QSize 
     }
   }
 
-  data->indexes_.insert(idx);
   data->desired_size_ = size;
 
+  // The index is only kept while loading, so it can be repainted when the pixmap is ready.
+  // Keeping it after that would leave a persistent index for every painted row, which the models have to update on every change.
   switch (data->state_) {
     case Data::State::CannotLoad:
+      return data->pixmap_;
+
     case Data::State::LoadingData:
     case Data::State::LoadingColors:
     case Data::State::LoadingImage:
+      data->indexes_.insert(idx);
       return data->pixmap_;
 
     case Data::State::Loaded:
       // Is the pixmap the right size?
       if (data->pixmap_.size() != size) {
+        data->indexes_.insert(idx);
         StartLoadingImage(url, data);
       }
 
@@ -137,9 +142,11 @@ QPixmap MoodbarItemDelegate::PixmapForIndex(const QModelIndex &idx, const QSize 
   }
 
   // We have to start loading the data from scratch.
+  // When reloading, the previous pixmap is shown until the new one is ready.
+  data->indexes_.insert(idx);
   StartLoadingData(url, has_cue, data);
 
-  return QPixmap();
+  return data->pixmap_;
 
 }
 
@@ -152,6 +159,8 @@ void MoodbarItemDelegate::StartLoadingData(const QUrl &url, const bool has_cue, 
   switch (load_result.status) {
     case MoodbarLoader::LoadStatus::CannotLoad:
       data->state_ = Data::State::CannotLoad;
+      data->pixmap_ = QPixmap();
+      data->indexes_.clear();
       break;
 
     case MoodbarLoader::LoadStatus::Loaded:
@@ -184,14 +193,29 @@ bool MoodbarItemDelegate::RemoveFromCacheIfIndexesInvalid(const QUrl &url, Data 
 
 void MoodbarItemDelegate::ReloadAllColors() {
 
+  // Loaded moodbars don't keep their indexes, so mark them to be loaded again, and repaint the view so the visible ones are reloaded.
+  // Moodbars that are rendering colors or an image use the previous style, so mark them to be reloaded when they are finished.
+  // Moodbars that are loading data will render the colors with the new style.
   const QList<QUrl> urls = data_.keys();
   for (const QUrl &url : urls) {
     Data *data = data_[url];
 
-    if (data->state_ == Data::State::Loaded) {
-      StartLoadingData(url, false, data);
+    switch (data->state_) {
+      case Data::State::Loaded:
+        data->state_ = Data::State::None;
+        break;
+      case Data::State::LoadingColors:
+      case Data::State::LoadingImage:
+        data->reload_ = true;
+        break;
+      case Data::State::None:
+      case Data::State::CannotLoad:
+      case Data::State::LoadingData:
+        break;
     }
   }
+
+  playlist_view_->viewport()->update();
 
 }
 
@@ -207,6 +231,9 @@ void MoodbarItemDelegate::DataLoaded(const QUrl &url, MoodbarPipelinePtr pipelin
 
   if (!pipeline->success()) {
     data->state_ = Data::State::CannotLoad;
+    // The rows may still show a previous pixmap while reloading, so repaint them without it.
+    data->pixmap_ = QPixmap();
+    RepaintIndexes(url, data);
     return;
   }
 
@@ -280,6 +307,18 @@ void MoodbarItemDelegate::ImageLoaded(const QUrl &url, const QImage &image) {
   data->pixmap_ = QPixmap::fromImage(image);
   data->state_ = Data::State::Loaded;
 
+  RepaintIndexes(url, data);
+
+  // If the style changed while rendering, the repaint loads the moodbar again with the new style.
+  if (data->reload_) {
+    data->reload_ = false;
+    data->state_ = Data::State::None;
+  }
+
+}
+
+void MoodbarItemDelegate::RepaintIndexes(const QUrl &url, Data *data) {
+
   Playlist *playlist = playlist_view_->playlist();
   const PlaylistFilter *filter = playlist->filter();
 
@@ -299,5 +338,8 @@ void MoodbarItemDelegate::ImageLoaded(const QUrl &url, const QImage &image) {
       playlist->MoodbarUpdated(source_index);
     }
   }
+
+  // The rows have been told to repaint, so the indexes are no longer needed.
+  data->indexes_.clear();
 
 }

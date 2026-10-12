@@ -1,6 +1,7 @@
 /*
  * Strawberry Music Player
  * Copyright 2026, Strawberry contributors
+ * Copyright 2026, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -79,6 +80,7 @@ class WaveformPipeline : public QObject {
 
   bool success_;
   std::atomic<bool> running_;
+  std::atomic<bool> error_received_;
   QByteArray data_;
 };
 

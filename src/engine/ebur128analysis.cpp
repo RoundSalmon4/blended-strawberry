@@ -1,6 +1,7 @@
 /*
  * Strawberry Music Player
  * Copyright 2023 Roman Lebedev
+ * Copyright 2023-2026, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +24,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <optional>
+#include <atomic>
 #include <tuple>
 #include <vector>
 #include <memory>
@@ -210,6 +212,9 @@ class EBUR128AnalysisImpl {
 
   std::optional<EBUR128State> state;
 
+  // Monotonic time of the last buffer, set in the streaming thread, so the analysis only times out when decoding stops making progress, not when a long song takes long to decode.
+  std::atomic<gint64> last_buffer_time_usec_{0};
+
   static void NewPadCallback(GstElement *elt, GstPad *pad, gpointer data);
   static GstFlowReturn NewBufferCallback(GstAppSink *app_sink, gpointer self);
 };
@@ -367,6 +372,9 @@ GstFlowReturn EBUR128AnalysisImpl::NewBufferCallback(GstAppSink *app_sink, gpoin
     return GST_FLOW_ERROR;
   }
 
+  // Recorded when the buffer arrives, before processing it, so the time processing takes doesn't count as time without progress.
+  me->last_buffer_time_usec_ = g_get_monotonic_time();
+
   GstBuffer *buffer = gst_sample_get_buffer(&*sample);
   if (buffer) {
     GstMapInfo map;
@@ -477,13 +485,26 @@ std::optional<EBUR128Measures> EBUR128AnalysisImpl::Compute(const Song &song) {
   QElapsedTimer time;
   time.start();
 
-  // Start playing
+  // Start playing, the time without progress is counted from here until the first buffer.
+  impl.last_buffer_time_usec_ = g_get_monotonic_time();
   gst_element_set_state(pipeline, GST_STATE_PLAYING);
 
-  // Wait until EOS or error
+  // Wait until EOS or error, as long as decoding makes progress, so long songs on slow storage are still analyzed.
   bool hadError = false;
-  GstMessage *msg = gst_bus_timed_pop_filtered(bus, kTimeoutSecs * GST_SECOND, static_cast<GstMessageType>(GST_MESSAGE_EOS | GST_MESSAGE_ERROR));
-  if (msg) {
+  GstMessage *msg = nullptr;
+  while (true) {
+    // Only wait for what remains of the timeout since the last buffer, so it times out the same time after the last buffer, however the buffers arrived.
+    const gint64 remaining_usec = (kTimeoutSecs * G_USEC_PER_SEC) - (g_get_monotonic_time() - impl.last_buffer_time_usec_);
+    if (remaining_usec <= 0) break;
+    msg = gst_bus_timed_pop_filtered(bus, static_cast<GstClockTime>(remaining_usec) * GST_USECOND, static_cast<GstMessageType>(GST_MESSAGE_EOS | GST_MESSAGE_ERROR));
+    if (msg) break;
+  }
+  if (!msg) {
+    // The song is not completely analyzed, so the result would be wrong.
+    hadError = true;
+    qLog(Error) << "Timed out processing" << song.url() << "after" << kTimeoutSecs << "seconds without progress";
+  }
+  else {
     if (msg->type == GST_MESSAGE_ERROR) {
       hadError = true;
       // Report error
@@ -502,6 +523,9 @@ std::optional<EBUR128Measures> EBUR128AnalysisImpl::Compute(const Song &song) {
 
   const qint64 decode_time = time.restart();
 
+  // Stop the pipeline before using the state, this waits for the streaming threads, which still add frames to it after a timeout.
+  gst_element_set_state(pipeline, GST_STATE_NULL);
+
   std::optional<EBUR128Measures> result;
   if (!hadError && impl.state) {
     // Generate loudness characteristics from sampled data.
@@ -513,9 +537,7 @@ std::optional<EBUR128Measures> EBUR128AnalysisImpl::Compute(const Song &song) {
   }
 
   // Cleanup
-  callbacks.new_sample = nullptr;
   gst_object_unref(bus);
-  gst_element_set_state(pipeline, GST_STATE_NULL);
   gst_object_unref(pipeline);
 
   return result;

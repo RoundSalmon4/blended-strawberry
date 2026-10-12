@@ -2,7 +2,7 @@
  * Strawberry Music Player
  * This file was part of Clementine.
  * Copyright 2012, David Sansome <me@davidsansome.com>
- * Copyright 2019-2025, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2019-2026, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -79,6 +79,8 @@ class MoodbarItemDelegate : public QItemDelegate {
     QSet<QPersistentModelIndex> indexes_;
 
     State state_;
+    // Set when the style changed while the colors or the image were being rendered with the previous style.
+    bool reload_;
     ColorVector colors_;
     QSize desired_size_;
     QPixmap pixmap_;
@@ -91,6 +93,7 @@ class MoodbarItemDelegate : public QItemDelegate {
   void StartLoadingImage(const QUrl &url, Data *data);
 
   bool RemoveFromCacheIfIndexesInvalid(const QUrl &url, Data *data);
+  void RepaintIndexes(const QUrl &url, Data *data);
 
   void ReloadAllColors();
 

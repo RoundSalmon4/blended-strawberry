@@ -26,3 +26,16 @@ PlaylistUndoCommandReOrderItems::PlaylistUndoCommandReOrderItems(Playlist *playl
 void PlaylistUndoCommandReOrderItems::undo() { playlist_->ReOrderWithoutUndo(old_items_); }
 
 void PlaylistUndoCommandReOrderItems::redo() { playlist_->ReOrderWithoutUndo(new_items_); }
+
+void PlaylistUndoCommandReOrderItems::ReplaceItems(const QHash<const PlaylistItem*, PlaylistItemPtr> &replacements) {
+
+  for (PlaylistItemPtrList *items : {&old_items_, &new_items_}) {
+    for (PlaylistItemPtr &item : *items) {
+      const QHash<const PlaylistItem*, PlaylistItemPtr>::const_iterator it = replacements.constFind(&*item);
+      if (it != replacements.constEnd()) {
+        item = it.value();
+      }
+    }
+  }
+
+}

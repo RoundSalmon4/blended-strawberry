@@ -2,7 +2,7 @@
  * Strawberry Music Player
  * This file was part of Clementine.
  * Copyright 2010, David Sansome <me@davidsansome.com>
- * Copyright 2018-2021, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2018-2026, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -79,9 +79,10 @@ bool GPodDevice::Init() {
   InitBackendDirectory(url_.path(), first_time_);
   collection_model_->Init();
 
-  loader_ = new GPodLoader(url_.path(), task_manager_, collection_backend_, shared_from_this());
+  // The loader doesn't hold the device, that made a reference cycle, which kept the device alive when it was never connected.
+  loader_ = new GPodLoader(url_.path(), task_manager_, collection_backend_);
+  // The loader is only moved to its thread when connecting, so a loader that was never started still lives in this thread, and can be deleted here.
   loader_thread_ = new QThread();
-  loader_->moveToThread(loader_thread_);
 
   QObject::connect(loader_, &GPodLoader::Error, this, &GPodDevice::LoaderError);
   QObject::connect(loader_, &GPodLoader::TaskStarted, this, &GPodDevice::TaskStarted);
@@ -95,10 +96,15 @@ bool GPodDevice::Init() {
 GPodDevice::~GPodDevice() {
 
   if (loader_) {
-    loader_thread_->exit();
-    loader_->deleteLater();
-    loader_thread_->deleteLater();
+    // The loader can still be loading, abort it and wait for the thread to finish, deleting a running QThread crashes.
+    loader_->Abort();
+    loader_thread_->quit();
+    loader_thread_->wait();
+    // The loader is back in this thread, it was either never moved to the loader thread, or LoadDatabase() moved it back before the thread finished.
+    // Deleting it also frees the database if LoadFinished() was not handled yet.
+    delete loader_;
     loader_ = nullptr;
+    delete loader_thread_;
     loader_thread_ = nullptr;
   }
 
@@ -111,6 +117,10 @@ GPodDevice::~GPodDevice() {
 
 void GPodDevice::ConnectAsync() {
 
+  // Already loading or loaded.
+  if (!loader_ || !loader_thread_ || loader_thread_->isRunning()) return;
+
+  loader_->moveToThread(loader_thread_);
   loader_thread_->start();
 
 }
@@ -128,15 +138,16 @@ void GPodDevice::Close() {
 
 }
 
-void GPodDevice::LoadFinished(Itdb_iTunesDB *db, const bool success) {
+void GPodDevice::LoadFinished(const bool success) {
 
   QMutexLocker l(&db_mutex_);
-  db_ = db;
+  db_ = loader_->TakeDatabase();
   db_wait_cond_.wakeAll();
 
   if (loader_thread_) {
+    // The loading is done, so the thread finishes right away, wait for it without a timeout, deleting a running QThread crashes.
     loader_thread_->quit();
-    loader_thread_->wait(1000);
+    loader_thread_->wait();
     loader_thread_->deleteLater();
     loader_thread_ = nullptr;
   }
@@ -262,8 +273,8 @@ bool GPodDevice::CopyToStorage(const CopyJob &job, QString &error_text) {
     qLog(Error) << error_text;
     Q_EMIT Error(error_text);
 
-    // Need to remove the track from the db again
-    itdb_track_remove(track);
+    // Need to remove the track from the db again, and from the master playlist it was added to.
+    RemoveTrackFromITunesDb(track);
     return false;
   }
 
@@ -367,19 +378,26 @@ bool GPodDevice::RemoveTrackFromITunesDb(const QString &path, const QString &rel
     return false;
   }
 
-  // Remove the track from all playlists
+  RemoveTrackFromITunesDb(track);
+
+  return true;
+
+}
+
+void GPodDevice::RemoveTrackFromITunesDb(Itdb_Track *track) {
+
+  // Remove the track from all playlists first, since itdb_track_remove() only removes it from the track list, so the playlists would keep a pointer to the freed track.
   for (GList *playlists = db_->playlists; playlists != nullptr; playlists = playlists->next) {
     Itdb_Playlist *playlist = static_cast<Itdb_Playlist*>(playlists->data);
 
-    if (itdb_playlist_contains_track(playlist, track)) {
+    // itdb_playlist_remove_track() only removes the first occurrence, and a playlist can contain the same track more than once.
+    while (itdb_playlist_contains_track(playlist, track)) {
       itdb_playlist_remove_track(playlist, track);
     }
   }
 
   // Remove the track from the database, this frees the struct too
   itdb_track_remove(track);
-
-  return true;
 
 }
 

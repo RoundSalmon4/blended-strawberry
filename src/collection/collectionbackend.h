@@ -85,6 +85,9 @@ class CollectionBackendInterface : public QObject {
 
   virtual SharedPtr<Database> db() const = 0;
 
+  // Closes the database connection of the calling thread, which must be done after querying from a concurrent thread.
+  virtual void Close() = 0;
+
   virtual void GetAllSongsAsync(const int id = 0) = 0;
 
   // Get a list of directories in the collection.  Emits DirectoriesDiscovered.
@@ -147,7 +150,7 @@ class CollectionBackend : public CollectionBackendInterface {
 
   void Init(SharedPtr<Database> db, SharedPtr<TaskManager> task_manager, const Song::Source source, const QString &songs_table, const QString &dirs_table = QString(), const QString &subdirs_table = QString());
 
-  void Close();
+  void Close() override;
 
   void ExitAsync();
 
@@ -310,13 +313,10 @@ class CollectionBackend : public CollectionBackendInterface {
 
  private:
   struct CompilationInfo {
-    CompilationInfo() : has_compilation_detected(0), has_not_compilation_detected(0) {}
-
-    QList<QUrl> urls;
+    // Each URL once, CUE sheet songs share the URL of the file.
+    QList<QUrl> urls_compilation_detected;
+    QList<QUrl> urls_not_compilation_detected;
     QStringList artists;
-
-    int has_compilation_detected;
-    int has_not_compilation_detected;
   };
 
   bool UpdateCompilations(const QSqlDatabase &db, SongList &changed_songs, const QUrl &url, const bool compilation_detected);

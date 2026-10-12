@@ -34,6 +34,7 @@
 #include <QMap>
 #include <QSet>
 #include <QMultiMap>
+#include <QMultiHash>
 #include <QMetaType>
 #include <QVariant>
 #include <QString>
@@ -370,6 +371,9 @@ class Playlist : public QAbstractListModel {
   template<typename T>
   void InsertSongItems(const SongList &songs, const int pos, const bool play_now, const bool enqueue, const bool enqueue_next = false, const bool signal = false);
 
+  // Inserts the items through the undo stack, and auto-sorts afterwards if enabled, so that undo and redo replay the insert and the sort in the right order.
+  void InsertItemsWithUndo(const PlaylistItemPtrList &items, const int pos, const bool enqueue = false, const bool enqueue_next = false);
+
   // Modify the playlist without changing the undo stack.  These are used by our friends in PlaylistUndoCommands
   void InsertItemsWithoutUndo(const PlaylistItemPtrList &items, const int pos, const bool enqueue = false, const bool enqueue_next = false);
   PlaylistItemPtrList RemoveItemsWithoutUndo(const int row, const int count);
@@ -377,6 +381,11 @@ class Playlist : public QAbstractListModel {
   void MoveItemWithoutUndo(const int source, const int dest);
   void MoveItemsWithoutUndo(int start, const QList<int> &dest_rows);
   void ReOrderWithoutUndo(const PlaylistItemPtrList &new_items);
+
+  // Returns the rows of the item in ascending order, using item_rows_.
+  QList<int> ItemRows(const PlaylistItem *item) const;
+  // Must be called whenever items_ is changed.
+  void InvalidateItemRows();
 
   void RemoveItemsNotInQueue();
 
@@ -425,6 +434,10 @@ class Playlist : public QAbstractListModel {
   bool favorite_;
 
   PlaylistItemPtrList items_;
+
+  // The rows of the items in items_, rebuilt when needed after items_ changed, so finding the rows of an item doesn't scan the whole playlist.
+  mutable QMultiHash<const PlaylistItem*, int> item_rows_;
+  mutable bool item_rows_valid_;
 
   // Maps each item's UUID to the item, for fast lookups by UUID.
   // Only updated when items are added or removed; moves and reorders leave it untouched.

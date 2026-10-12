@@ -42,7 +42,13 @@
 
 #include <QtDebug>
 #include <QMimeData>
+#include <QByteArray>
+#include <QDataStream>
+#include <QIODevice>
 #include <QSet>
+#include <QSignalSpy>
+#include <QStringList>
+#include <QPersistentModelIndex>
 #include <QTemporaryDir>
 #include <QUndoStack>
 #include <QThread>
@@ -126,6 +132,9 @@ class PlaylistTest : public ::testing::Test {
     playlist_.current_virtual_index_ = current_virtual_index;
   }
 
+  // Returns the shuffled play order, to let tests check that it still refers to the same items after the rows changed.
+  QList<int> VirtualOrder() const { return playlist_.virtual_items_; }
+
   // Plays the next rows like the player does, until there is no next row or count rows were played, and returns the played rows.
   // Each next row is asked for twice, like Player::TrackAboutToEnd() does, so a next_row() that changes the result between calls fails the test.
   QList<int> PlayNextRows(const int count) {
@@ -148,6 +157,11 @@ class PlaylistTest : public ::testing::Test {
   // Forwards to the private Playlist::RemoveItemsNotInQueue(), which is otherwise only reachable through repopulating a dynamic playlist.
   void CallRemoveItemsNotInQueue() {
     playlist_.RemoveItemsNotInQueue();
+  }
+
+  // Forwards to the private Playlist::removeRows(QList<int>&), which removes scattered rows as one undo step.
+  bool CallRemoveRows(QList<int> &rows) {
+    return playlist_.removeRows(rows);
   }
 
   // Blocks until the given playlist emits RestoreFinished, bounded by timeout_ms like WaitForEditingFinished().
@@ -906,6 +920,181 @@ TEST_F(PlaylistTest, AutoSortDoesNothingUntilAColumnHasBeenSorted) {
 
 }
 
+// Regression test: with auto-sort, undoing an insert must remove the inserted items rather than whatever ended up at the insert rows after sorting, and redo must insert and sort them again.
+// The auto-sort used to push its sort command from inside the insert command, which put the commands on the undo stack in the wrong order.
+TEST_F(PlaylistTest, UndoRedoAutoSortedInsert) {
+
+  playlist_.InsertItems(PlaylistItemPtrList() << MakeMockItemP(u"D"_s) << MakeMockItemP(u"B"_s), -1);
+  playlist_.sort(static_cast<int>(Playlist::Column::Title), Qt::AscendingOrder);
+  playlist_.set_auto_sort(true);
+
+  playlist_.InsertItems(PlaylistItemPtrList() << MakeMockItemP(u"C"_s) << MakeMockItemP(u"A"_s), -1);
+  ASSERT_EQ(4, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"A"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(u"B"_s, TitleAt(playlist_, 1));
+  EXPECT_EQ(u"C"_s, TitleAt(playlist_, 2));
+  EXPECT_EQ(u"D"_s, TitleAt(playlist_, 3));
+
+  // One undo step reverts both the insert and its auto-sort.
+  ASSERT_TRUE(playlist_.undo_stack()->canUndo());
+  playlist_.undo_stack()->undo();
+  ASSERT_EQ(2, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"B"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(u"D"_s, TitleAt(playlist_, 1));
+  EXPECT_TRUE(IsSorted());
+
+  ASSERT_TRUE(playlist_.undo_stack()->canRedo());
+  playlist_.undo_stack()->redo();
+  EXPECT_FALSE(playlist_.undo_stack()->canRedo());
+  ASSERT_EQ(4, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"A"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(u"B"_s, TitleAt(playlist_, 1));
+  EXPECT_EQ(u"C"_s, TitleAt(playlist_, 2));
+  EXPECT_EQ(u"D"_s, TitleAt(playlist_, 3));
+
+  // Undo the insert again, then the original sort.
+  playlist_.undo_stack()->undo();
+  playlist_.undo_stack()->undo();
+  ASSERT_EQ(2, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"D"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(u"B"_s, TitleAt(playlist_, 1));
+  EXPECT_FALSE(IsSorted());
+
+}
+
+// Regression test: when an auto-sorted insert's item is replaced after loading, redo must bring back the loaded item rather than the one stored by the sort command.
+TEST_F(PlaylistTest, RedoAutoSortedInsertKeepsLoadedItem) {
+
+  playlist_.InsertItems(PlaylistItemPtrList() << MakeMockItemP(u"D"_s) << MakeMockItemP(u"B"_s), -1);
+  playlist_.sort(static_cast<int>(Playlist::Column::Title), Qt::AscendingOrder);
+  playlist_.set_auto_sort(true);
+
+  Song song;
+  song.Init(u"C"_s, u"Artist"_s, u"Album"_s, 123);
+  song.set_url(QUrl::fromLocalFile(u"/tmp/does-not-need-to-exist.mp3"_s));
+  playlist_.InsertItems(PlaylistItemPtrList() << std::make_shared<SongPlaylistItem>(song), -1);
+  ASSERT_EQ(3, playlist_.rowCount(QModelIndex()));
+  ASSERT_EQ(u"C"_s, TitleAt(playlist_, 1));
+
+  // Replace the item, like SongLoaderInserter does when the songs have finished loading.
+  Song loaded_song = song;
+  loaded_song.set_title(u"C loaded"_s);
+  playlist_.UpdateItems(SongList() << loaded_song);
+  ASSERT_EQ(u"C loaded"_s, TitleAt(playlist_, 1));
+  const PlaylistItemPtr loaded_item = playlist_.item_at(1);
+
+  playlist_.undo_stack()->undo();
+  ASSERT_EQ(2, playlist_.rowCount(QModelIndex()));
+
+  playlist_.undo_stack()->redo();
+  ASSERT_EQ(3, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"B"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(u"C loaded"_s, TitleAt(playlist_, 1));
+  EXPECT_EQ(u"D"_s, TitleAt(playlist_, 2));
+  EXPECT_EQ(loaded_item, playlist_.item_at(1));
+  EXPECT_EQ(1, playlist_.IndexByUuId(loaded_item->uuid()));
+
+}
+
+// Regression test: updating items must give the songs with the same URL, like the tracks of a CUE sheet, to the items with that URL in order, leave items without a song alone, and replace the items in the sort commands.
+TEST_F(PlaylistTest, UpdateItemsMatchesSongsByUrlInOrder) {
+
+  const auto make_song = [](const QString &title, const QString &filename) {
+    Song song;
+    song.Init(title, u"Artist"_s, u"Album"_s, 123);
+    song.set_url(QUrl::fromLocalFile(u"/tmp/"_s + filename));
+    return song;
+  };
+
+  playlist_.InsertItems(PlaylistItemPtrList()
+                        << std::make_shared<SongPlaylistItem>(make_song(u"A"_s, u"image.flac"_s))
+                        << std::make_shared<SongPlaylistItem>(make_song(u"B"_s, u"other.flac"_s))
+                        << std::make_shared<SongPlaylistItem>(make_song(u"C"_s, u"image.flac"_s)), -1);
+  playlist_.sort(static_cast<int>(Playlist::Column::Title), Qt::DescendingOrder);
+  ASSERT_EQ(u"C"_s, TitleAt(playlist_, 0));
+  ASSERT_EQ(u"B"_s, TitleAt(playlist_, 1));
+  ASSERT_EQ(u"A"_s, TitleAt(playlist_, 2));
+
+  // The two loaded tracks of image.flac are used for the items with that URL in playlist order, other.flac has no song.
+  playlist_.UpdateItems(SongList() << make_song(u"Track 1"_s, u"image.flac"_s) << make_song(u"Track 2"_s, u"image.flac"_s));
+  EXPECT_EQ(u"Track 1"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(u"B"_s, TitleAt(playlist_, 1));
+  EXPECT_EQ(u"Track 2"_s, TitleAt(playlist_, 2));
+
+  // Undoing and redoing the sort keeps the loaded items.
+  playlist_.undo_stack()->undo();
+  EXPECT_EQ(u"Track 2"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(u"B"_s, TitleAt(playlist_, 1));
+  EXPECT_EQ(u"Track 1"_s, TitleAt(playlist_, 2));
+  playlist_.undo_stack()->redo();
+  EXPECT_EQ(u"Track 1"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(u"Track 2"_s, TitleAt(playlist_, 2));
+
+  // Undoing and redoing the insert keeps each loaded item too, also for the items sharing a URL.
+  playlist_.undo_stack()->undo();
+  playlist_.undo_stack()->undo();
+  ASSERT_EQ(0, playlist_.rowCount(QModelIndex()));
+  playlist_.undo_stack()->redo();
+  ASSERT_EQ(3, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"Track 2"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(u"B"_s, TitleAt(playlist_, 1));
+  EXPECT_EQ(u"Track 1"_s, TitleAt(playlist_, 2));
+
+}
+
+// Regression test: an auto-sorted insert too large for the undo stack must still be sorted, and must leave the undo stack empty.
+TEST_F(PlaylistTest, LargeAutoSortedInsertIsSortedAndClearsUndoStack) {
+
+  playlist_.InsertItems(PlaylistItemPtrList() << MakeMockItemP(u"B"_s) << MakeMockItemP(u"A"_s), -1);
+  playlist_.sort(static_cast<int>(Playlist::Column::Title), Qt::AscendingOrder);
+  playlist_.set_auto_sort(true);
+
+  // Insert in descending order, so the result is only in order if it was sorted.
+  PlaylistItemPtrList items;
+  const int count = Playlist::kUndoItemLimit + 1;
+  for (int i = count - 1; i >= 0; --i) {
+    items << MakeMockItemP(u"T%1"_s.arg(i, 4, 10, QLatin1Char('0')));
+  }
+  playlist_.InsertItems(items, -1);
+
+  ASSERT_EQ(count + 2, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"A"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(u"B"_s, TitleAt(playlist_, 1));
+  for (int i = 0; i < count; ++i) {
+    EXPECT_EQ(u"T%1"_s.arg(i, 4, 10, QLatin1Char('0')), TitleAt(playlist_, i + 2));
+  }
+  EXPECT_EQ(0, playlist_.undo_stack()->count());
+
+}
+
+// Regression test: with auto-sort, undoing a removal must put the item back at its row without pushing a sort command onto the undo stack, and redo must remove the same item again.
+TEST_F(PlaylistTest, UndoRedoRemoveWithAutoSort) {
+
+  playlist_.InsertItems(PlaylistItemPtrList() << MakeMockItemP(u"C"_s) << MakeMockItemP(u"A"_s) << MakeMockItemP(u"B"_s), -1);
+  playlist_.sort(static_cast<int>(Playlist::Column::Title), Qt::AscendingOrder);
+  playlist_.set_auto_sort(true);
+  const int undo_count = playlist_.undo_stack()->count();
+
+  ASSERT_TRUE(playlist_.removeRows(1, 1, QModelIndex()));
+  ASSERT_EQ(2, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"A"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(u"C"_s, TitleAt(playlist_, 1));
+
+  playlist_.undo_stack()->undo();
+  ASSERT_EQ(3, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"A"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(u"B"_s, TitleAt(playlist_, 1));
+  EXPECT_EQ(u"C"_s, TitleAt(playlist_, 2));
+  EXPECT_EQ(undo_count + 1, playlist_.undo_stack()->count());
+
+  playlist_.undo_stack()->redo();
+  EXPECT_FALSE(playlist_.undo_stack()->canRedo());
+  ASSERT_EQ(2, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"A"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(u"C"_s, TitleAt(playlist_, 1));
+
+}
+
 // Regression test: undoing a column sort must also revert the playlist's own idea of what's sorted (is_sorted_/sort_column_/sort_order_), and announce it via SortStateChanged, so the header's sort indicator can be kept in sync rather than being left showing a sort that's since been undone.
 TEST_F(PlaylistTest, UndoingASortAlsoRevertsSortState) {
 
@@ -989,6 +1178,49 @@ TEST_F(PlaylistTest, MoveNonContiguousRowsToAnotherPlaylist) {
   EXPECT_EQ(u"Three"_s, source_playlist.data(source_playlist.index(2, static_cast<int>(Playlist::Column::Title))));
   EXPECT_EQ(u"Four"_s, source_playlist.data(source_playlist.index(3, static_cast<int>(Playlist::Column::Title))));
   EXPECT_EQ(u"Five"_s, source_playlist.data(source_playlist.index(4, static_cast<int>(Playlist::Column::Title))));
+
+}
+
+// Regression test: undoing a move within a playlist must keep persistent indexes on the same items, including unmoved items that end up at one of the restored rows.
+TEST_F(PlaylistTest, UndoMoveKeepsPersistentIndexesOnSameItems) {
+
+  playlist_.InsertItems(PlaylistItemPtrList() << MakeMockItemP(u"One"_s) << MakeMockItemP(u"Two"_s) << MakeMockItemP(u"Three"_s) << MakeMockItemP(u"Four"_s) << MakeMockItemP(u"Five"_s));
+  ASSERT_EQ(5, playlist_.rowCount(QModelIndex()));
+
+  // Drag "One" and "Three" within the playlist to before "Five".
+  const QModelIndexList source_indexes = QModelIndexList() << playlist_.index(0, 0) << playlist_.index(2, 0);
+  ScopedPtr<QMimeData> mimedata(playlist_.mimeData(source_indexes));
+  ASSERT_TRUE(mimedata);
+  ASSERT_TRUE(playlist_.dropMimeData(mimedata.get(), Qt::MoveAction, 4, 0, QModelIndex()));
+
+  const QStringList moved_titles = QStringList() << u"Two"_s << u"Four"_s << u"One"_s << u"Three"_s << u"Five"_s;
+  ASSERT_EQ(5, playlist_.rowCount(QModelIndex()));
+  for (int row = 0; row < moved_titles.count(); ++row) {
+    EXPECT_EQ(moved_titles[row], playlist_.data(playlist_.index(row, static_cast<int>(Playlist::Column::Title))));
+  }
+
+  QList<QPersistentModelIndex> persistent_indexes;
+  for (int row = 0; row < playlist_.rowCount(QModelIndex()); ++row) {
+    persistent_indexes << QPersistentModelIndex(playlist_.index(row, static_cast<int>(Playlist::Column::Title)));
+  }
+  playlist_.set_current_row(0);
+
+  ASSERT_TRUE(playlist_.undo_stack()->canUndo());
+  playlist_.undo_stack()->undo();
+
+  const QStringList original_titles = QStringList() << u"One"_s << u"Two"_s << u"Three"_s << u"Four"_s << u"Five"_s;
+  ASSERT_EQ(5, playlist_.rowCount(QModelIndex()));
+  for (int row = 0; row < original_titles.count(); ++row) {
+    EXPECT_EQ(original_titles[row], playlist_.data(playlist_.index(row, static_cast<int>(Playlist::Column::Title))));
+  }
+
+  // Each persistent index still points at the item it pointed at before the undo.
+  for (int i = 0; i < persistent_indexes.count(); ++i) {
+    ASSERT_TRUE(persistent_indexes[i].isValid());
+    EXPECT_EQ(moved_titles[i], persistent_indexes[i].data());
+  }
+  EXPECT_EQ(1, playlist_.current_row());
+  EXPECT_EQ(u"Two"_s, playlist_.current_item()->EffectiveMetadata().title());
 
 }
 
@@ -1188,6 +1420,56 @@ TEST_F(PlaylistTest, RemoveCurrentWithShuffleKeepsShufflePosition) {
   const int next_row = playlist_.next_row();
   ASSERT_NE(-1, next_row);
   EXPECT_EQ(items[1], playlist_.item_at(next_row));
+
+}
+
+// Regression test: with shuffle, inserting several items in the middle of the playlist must keep the played part of the shuffle order, keep the order of the rest, and add each new item once after the current track.
+// The new items get random positions, so only these properties are checked, not the exact order.
+TEST_F(PlaylistTest, InsertSeveralWithShuffleKeepsShuffleOrder) {
+
+  PlaylistItemPtrList items;
+  for (int i = 0; i < 6; ++i) {
+    items << MakeMockItemP(QString::number(i));
+  }
+  playlist_.InsertItems(items);
+
+  playlist_.sequence()->SetShuffleMode(PlaylistSequence::ShuffleMode::All);
+  playlist_.set_current_row(5);
+
+  // Shuffle order 3, 0, 5 (current), 1, 4, 2.
+  SetVirtualOrder(QList<int>() << 3 << 0 << 5 << 1 << 4 << 2, 2);
+
+  // Insert 4 items at row 2, the rows from 2 on move down by 4.
+  PlaylistItemPtrList new_items;
+  for (int i = 0; i < 4; ++i) {
+    new_items << MakeMockItemP(u"New "_s + QString::number(i));
+  }
+  playlist_.InsertItems(new_items, 2);
+  ASSERT_EQ(10, playlist_.rowCount(QModelIndex()));
+
+  const QList<int> virtual_order = VirtualOrder();
+  ASSERT_EQ(10, virtual_order.count());
+
+  // The played part and the current track are kept, with the moved rows: 3, 0, 5 became 7, 0, 9.
+  EXPECT_EQ((QList<int>() << 7 << 0 << 9), virtual_order.first(3));
+  EXPECT_EQ(9, playlist_.current_row());
+  EXPECT_EQ(items[5], playlist_.current_item());
+
+  // After the current track, the remaining old rows 1, 4, 2 (now 1, 8, 6) keep their order, and each new row 2 to 5 appears once.
+  const QList<int> rest = virtual_order.sliced(3);
+  QList<int> old_rows_in_rest;
+  QList<int> new_rows_in_rest;
+  for (const int row : rest) {
+    if (row >= 2 && row <= 5) {
+      new_rows_in_rest << row;
+    }
+    else {
+      old_rows_in_rest << row;
+    }
+  }
+  EXPECT_EQ((QList<int>() << 1 << 8 << 6), old_rows_in_rest);
+  std::sort(new_rows_in_rest.begin(), new_rows_in_rest.end());
+  EXPECT_EQ((QList<int>() << 2 << 3 << 4 << 5), new_rows_in_rest);
 
 }
 
@@ -1510,6 +1792,84 @@ TEST_F(PlaylistTest, RemoveItemsNotInQueueClearsUndoStackWhenRemovingAll) {
 
 }
 
+// Regression test: the queue must only accept rows dragged from its own playlist, and skip rows that don't exist anymore.
+TEST_F(PlaylistTest, QueueDropOnlyAcceptsExistingRowsOfOwnPlaylist) {
+
+  playlist_.InsertItems(PlaylistItemPtrList() << MakeMockItemP(u"One"_s) << MakeMockItemP(u"Two"_s) << MakeMockItemP(u"Three"_s));
+
+  // Rows dragged from another playlist are other songs, so they are not queued.
+  Playlist other_playlist(nullptr, nullptr, nullptr, nullptr, tagreader_client_, 2);
+  other_playlist.InsertItems(PlaylistItemPtrList() << MakeMockItemP(u"A"_s) << MakeMockItemP(u"B"_s) << MakeMockItemP(u"C"_s) << MakeMockItemP(u"D"_s) << MakeMockItemP(u"E"_s));
+  {
+    ScopedPtr<QMimeData> mimedata(other_playlist.mimeData(QModelIndexList() << other_playlist.index(4, 0)));
+    ASSERT_TRUE(mimedata);
+    EXPECT_FALSE(playlist_.queue()->dropMimeData(mimedata.get(), Qt::CopyAction, -1, 0, QModelIndex()));
+    EXPECT_EQ(0, playlist_.queue()->rowCount(QModelIndex()));
+  }
+
+  // Data without the process ID is not accepted, even with the pointer of this playlist, it could come from another instance.
+  {
+    QByteArray rows_data;
+    QDataStream stream(&rows_data, QIODevice::WriteOnly);
+    const Playlist *playlist = &playlist_;
+    stream.writeRawData(reinterpret_cast<const char*>(&playlist), sizeof(&playlist));
+    stream << (QList<int>() << 0);
+    QMimeData mimedata;
+    mimedata.setData(QLatin1String(Playlist::kRowsMimetype), rows_data);
+    EXPECT_FALSE(playlist_.queue()->dropMimeData(&mimedata, Qt::CopyAction, -1, 0, QModelIndex()));
+    EXPECT_EQ(0, playlist_.queue()->rowCount(QModelIndex()));
+  }
+
+  // Rows of its own playlist that were removed during the drag are skipped, the others are queued.
+  {
+    ScopedPtr<QMimeData> mimedata(playlist_.mimeData(QModelIndexList() << playlist_.index(0, 0) << playlist_.index(2, 0)));
+    ASSERT_TRUE(mimedata);
+    ASSERT_TRUE(playlist_.removeRows(1, 2, QModelIndex()));
+    ASSERT_EQ(1, playlist_.rowCount(QModelIndex()));
+    EXPECT_TRUE(playlist_.queue()->dropMimeData(mimedata.get(), Qt::CopyAction, -1, 0, QModelIndex()));
+    EXPECT_EQ(1, playlist_.queue()->rowCount(QModelIndex()));
+    EXPECT_TRUE(playlist_.queue()->ContainsSourceRow(0));
+  }
+
+}
+
+// Regression test: the queue markers of each queued track must be updated, the queued tracks are not in order in the playlist, so one range from the first to the last could be reversed, and was ignored.
+// The tracks after added or removed ones get a new queue position, so they must be updated too.
+TEST_F(PlaylistTest, QueueMarkersUpdatedForEachQueuedTrack) {
+
+  playlist_.InsertItems(PlaylistItemPtrList() << MakeMockItemP(u"Zero"_s) << MakeMockItemP(u"One"_s) << MakeMockItemP(u"Two"_s) << MakeMockItemP(u"Three"_s) << MakeMockItemP(u"Four"_s) << MakeMockItemP(u"Five"_s));
+  playlist_.queue()->ToggleTracks(QModelIndexList() << playlist_.index(4, 0) << playlist_.index(1, 0) << playlist_.index(5, 0));
+  ASSERT_EQ(3, playlist_.queue()->rowCount(QModelIndex()));
+
+  // Returns the rows updated by the spied dataChanged signals, and fails for reversed ranges.
+  const auto updated_rows = [](const QSignalSpy &spy) {
+    QSet<int> rows;
+    for (const QList<QVariant> &arguments : spy) {
+      const QModelIndex top_left = arguments.at(0).toModelIndex();
+      const QModelIndex bottom_right = arguments.at(1).toModelIndex();
+      EXPECT_LE(top_left.row(), bottom_right.row());
+      for (int row = top_left.row(); row <= bottom_right.row(); ++row) {
+        rows << row;
+      }
+    }
+    return rows;
+  };
+
+  QSignalSpy spy(&playlist_, &Playlist::dataChanged);
+
+  // Add two tracks to the front of the queue, in reverse order of the playlist, all queued tracks get a new position.
+  playlist_.queue()->InsertFirst(QModelIndexList() << playlist_.index(3, 0) << playlist_.index(0, 0));
+  ASSERT_EQ(5, playlist_.queue()->rowCount(QModelIndex()));
+  EXPECT_EQ(QSet<int>() << 3 << 0 << 4 << 1 << 5, updated_rows(spy));
+
+  // Remove a track from the middle of the queue, the removed track and the tracks after it are updated.
+  spy.clear();
+  playlist_.queue()->ToggleTracks(QModelIndexList() << playlist_.index(4, 0));
+  ASSERT_EQ(4, playlist_.queue()->rowCount(QModelIndex()));
+  EXPECT_EQ(QSet<int>() << 4 << 1 << 5, updated_rows(spy));
+
+}
+
 // Regression test: removing the items that are not queued must keep the current and queued items, and clear the undo stack.
 TEST_F(PlaylistTest, RemoveItemsNotInQueueKeepsCurrentAndQueuedAndClearsUndoStack) {
 
@@ -1551,6 +1911,137 @@ TEST_F(PlaylistTest, RemoveItemsNotInQueueKeepsUndoStackWhenNothingRemoved) {
 
   ASSERT_EQ(2, playlist_.rowCount(QModelIndex()));
   EXPECT_TRUE(playlist_.undo_stack()->canUndo());
+
+}
+
+// Removing scattered rows is one undo step, the removals of the consecutive rows are merged into one undo command.
+TEST_F(PlaylistTest, ScatteredRemovalIsOneUndoStep) {
+
+  playlist_.InsertItems(PlaylistItemPtrList() << MakeMockItemP(u"One"_s) << MakeMockItemP(u"Two"_s) << MakeMockItemP(u"Three"_s) << MakeMockItemP(u"Four"_s) << MakeMockItemP(u"Five"_s));
+  const QPersistentModelIndex two_p(playlist_.index(1, 0));
+  const int undo_count = playlist_.undo_stack()->count();
+
+  QList<int> rows = QList<int>() << 0 << 2 << 4;
+  ASSERT_TRUE(CallRemoveRows(rows));
+  ASSERT_EQ(2, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(undo_count + 1, playlist_.undo_stack()->count());
+  EXPECT_EQ(0, two_p.row());
+
+  playlist_.undo_stack()->undo();
+  ASSERT_EQ(5, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"One"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(u"Two"_s, TitleAt(playlist_, 1));
+  EXPECT_EQ(u"Three"_s, TitleAt(playlist_, 2));
+  EXPECT_EQ(u"Four"_s, TitleAt(playlist_, 3));
+  EXPECT_EQ(u"Five"_s, TitleAt(playlist_, 4));
+  EXPECT_EQ(1, two_p.row());
+
+}
+
+// Removing many rows at once, with and without undo, keeps the current row on the same item.
+TEST_F(PlaylistTest, RemoveManyRowsKeepsCurrentItem) {
+
+  PlaylistItemPtrList items;
+  const int count = Playlist::kUndoItemLimit + 100;
+  for (int i = 0; i < count; ++i) {
+    items << MakeMockItemP(QString::number(i));
+  }
+  playlist_.InsertItems(items);
+  playlist_.set_current_row(count - 10);
+
+  // Too many rows to keep in the undo stack.
+  ASSERT_TRUE(playlist_.removeRows(10, Playlist::kUndoItemLimit + 50));
+  ASSERT_EQ(count - Playlist::kUndoItemLimit - 50, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"9"_s, TitleAt(playlist_, 9));
+  EXPECT_EQ(QString::number(Playlist::kUndoItemLimit + 60), TitleAt(playlist_, 10));
+  EXPECT_EQ(items[count - 10], playlist_.current_item());
+
+  // Few enough rows to keep in the undo stack.
+  const int rows_before = playlist_.rowCount(QModelIndex());
+  ASSERT_TRUE(playlist_.removeRows(2, 5));
+  ASSERT_EQ(rows_before - 5, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(items[count - 10], playlist_.current_item());
+  playlist_.undo_stack()->undo();
+  ASSERT_EQ(rows_before, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"2"_s, TitleAt(playlist_, 2));
+  EXPECT_EQ(items[count - 10], playlist_.current_item());
+
+}
+
+// With shuffle, sorting and moving rows must keep the shuffled play order on the same items.
+TEST_F(PlaylistTest, ReorderWithShuffleKeepsShuffleOrder) {
+
+  playlist_.InsertItems(PlaylistItemPtrList() << MakeMockItemP(u"4"_s) << MakeMockItemP(u"3"_s) << MakeMockItemP(u"2"_s) << MakeMockItemP(u"1"_s) << MakeMockItemP(u"0"_s));
+  playlist_.sequence()->SetShuffleMode(PlaylistSequence::ShuffleMode::All);
+  SetVirtualOrder(QList<int>() << 3 << 0 << 4 << 1 << 2, -1);
+
+  const auto shuffle_order_titles = [this]() {
+    QStringList titles;
+    const QList<int> virtual_order = VirtualOrder();
+    for (const int row : virtual_order) titles << TitleAt(playlist_, row);
+    return titles;
+  };
+  const QStringList expected_titles = QStringList() << u"1"_s << u"4"_s << u"0"_s << u"3"_s << u"2"_s;
+  ASSERT_EQ(expected_titles, shuffle_order_titles());
+
+  // Sort, which reorders all rows.
+  playlist_.sort(static_cast<int>(Playlist::Column::Title), Qt::AscendingOrder);
+  ASSERT_EQ(u"0"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(expected_titles, shuffle_order_titles());
+
+  // Move rows within the playlist, and undo the move.
+  const QModelIndexList source_indexes = QModelIndexList() << playlist_.index(0, 0) << playlist_.index(2, 0);
+  ScopedPtr<QMimeData> mimedata(playlist_.mimeData(source_indexes));
+  ASSERT_TRUE(mimedata);
+  ASSERT_TRUE(playlist_.dropMimeData(mimedata.get(), Qt::MoveAction, 5, 0, QModelIndex()));
+  ASSERT_EQ(u"1"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(expected_titles, shuffle_order_titles());
+  playlist_.undo_stack()->undo();
+  ASSERT_EQ(u"0"_s, TitleAt(playlist_, 0));
+  EXPECT_EQ(expected_titles, shuffle_order_titles());
+
+}
+
+// Updating the metadata of an item must update the row the item is at after rows were inserted, removed or reordered.
+TEST_F(PlaylistTest, UpdateItemMetadataAfterRowsChanged) {
+
+  const auto make_item = [](const QString &title) {
+    Song song;
+    song.Init(title, u"Artist"_s, u"Album"_s, 123);
+    song.set_url(QUrl::fromLocalFile(u"/music/"_s + title + u".mp3"_s));
+    return PlaylistItemPtr(std::make_shared<SongPlaylistItem>(song));
+  };
+  const auto changed_metadata = [](const PlaylistItemPtr &item, const QString &title) {
+    Song song = item->OriginalMetadata();
+    song.set_title(title);
+    return song;
+  };
+
+  const PlaylistItemPtr item_a = make_item(u"A"_s);
+  playlist_.InsertItems(PlaylistItemPtrList() << item_a << make_item(u"B"_s) << make_item(u"C"_s));
+
+  playlist_.sort(static_cast<int>(Playlist::Column::Title), Qt::DescendingOrder);
+  ASSERT_EQ(item_a, playlist_.item_at(2));
+  EXPECT_TRUE(playlist_.UpdateItemMetadata(item_a, changed_metadata(item_a, u"A2"_s), false));
+  EXPECT_EQ(u"A2"_s, TitleAt(playlist_, 2));
+
+  playlist_.InsertItems(PlaylistItemPtrList() << make_item(u"D"_s), 0);
+  ASSERT_EQ(item_a, playlist_.item_at(3));
+  EXPECT_TRUE(playlist_.UpdateItemMetadata(item_a, changed_metadata(item_a, u"A3"_s), false));
+  EXPECT_EQ(u"A3"_s, TitleAt(playlist_, 3));
+  EXPECT_EQ(u"D"_s, TitleAt(playlist_, 0));
+
+  ASSERT_TRUE(playlist_.removeRows(0, 2));
+  ASSERT_EQ(item_a, playlist_.item_at(1));
+  EXPECT_TRUE(playlist_.UpdateItemMetadata(item_a, changed_metadata(item_a, u"A4"_s), false));
+  EXPECT_EQ(u"A4"_s, TitleAt(playlist_, 1));
+  EXPECT_EQ(u"B"_s, TitleAt(playlist_, 0));
+
+  // An item that is not in the playlist is not updated.
+  const PlaylistItemPtr item_e = make_item(u"E"_s);
+  EXPECT_FALSE(playlist_.UpdateItemMetadata(item_e, changed_metadata(item_e, u"E2"_s), false));
+  // Neither is a null item.
+  EXPECT_FALSE(playlist_.UpdateItemMetadata(PlaylistItemPtr(), changed_metadata(item_e, u"E3"_s), false));
 
 }
 

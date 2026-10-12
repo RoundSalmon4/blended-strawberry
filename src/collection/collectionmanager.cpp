@@ -67,7 +67,9 @@ CollectionManager::CollectionManager(const SharedPtr<Database> database,
       original_thread_(thread()),
       save_playcounts_to_files_(false),
       save_ratings_to_files_(false),
-      save_lyrics_to_files_(false) {
+      save_lyrics_to_files_(false),
+      abort_sync_playcount_and_rating_(false),
+      sync_playcount_and_rating_pending_(false) {
 
   setObjectName(QLatin1String(QObject::metaObject()->className()));
 
@@ -88,6 +90,10 @@ CollectionManager::CollectionManager(const SharedPtr<Database> database,
 }
 
 CollectionManager::~CollectionManager() {
+
+  // Normally already done by Exit(), the sync must not outlive this object.
+  abort_sync_playcount_and_rating_ = true;
+  sync_playcount_and_rating_future_.waitForFinished();
 
   if (watcher_) {
     watcher_->Abort();
@@ -149,6 +155,16 @@ void CollectionManager::Exit() {
   backend_->ExitAsync();
   watcher_->Abort();
   watcher_->ExitAsync();
+
+  // Abort syncing playcounts and ratings to the files, and wait for it, it uses this object and the backend.
+  sync_playcount_and_rating_pending_ = false;
+  if (sync_playcount_and_rating_future_.isRunning()) {
+    abort_sync_playcount_and_rating_ = true;
+    QFutureWatcher<void> *sync_watcher = new QFutureWatcher<void>(this);
+    wait_for_exit_ << sync_watcher;
+    QObject::connect(sync_watcher, &QFutureWatcher<void>::finished, this, &CollectionManager::ExitReceived);
+    sync_watcher->setFuture(sync_playcount_and_rating_future_);
+  }
 
 }
 
@@ -217,7 +233,25 @@ void CollectionManager::Stopped() {
 
 void CollectionManager::SyncPlaycountAndRatingToFilesAsync() {
 
-  (void)QtConcurrent::run(&CollectionManager::SyncPlaycountAndRatingToFiles, this);
+  if (sync_playcount_and_rating_future_.isRunning()) {
+    // The running sync might have read the songs before they changed, so sync again when it finishes.
+    qLog(Debug) << "Already saving playcounts and ratings to the files, saving again when finished";
+    sync_playcount_and_rating_pending_ = true;
+    return;
+  }
+
+  abort_sync_playcount_and_rating_ = false;
+  sync_playcount_and_rating_pending_ = false;
+  sync_playcount_and_rating_future_ = QtConcurrent::run(&CollectionManager::SyncPlaycountAndRatingToFiles, this);
+
+  QFutureWatcher<void> *watcher = new QFutureWatcher<void>(this);
+  QObject::connect(watcher, &QFutureWatcher<void>::finished, this, [this, watcher]() {
+    watcher->deleteLater();
+    if (sync_playcount_and_rating_pending_ && !abort_sync_playcount_and_rating_) {
+      SyncPlaycountAndRatingToFilesAsync();
+    }
+  });
+  watcher->setFuture(sync_playcount_and_rating_future_);
 
 }
 
@@ -227,10 +261,14 @@ void CollectionManager::SyncPlaycountAndRatingToFiles() {
   task_manager_->SetTaskBlocksCollectionScans(task_id);
 
   const SongList songs = backend_->GetAllSongs();
+  // This is done in a concurrent thread so close the unique DB connection.
+  backend_->Close();
   const quint64 nb_songs = static_cast<quint64>(songs.size());
   quint64 i = 0;
   for (const Song &song : songs) {
+    if (abort_sync_playcount_and_rating_) break;
     (void)tagreader_client_->SaveSongPlaycountBlocking(song.url().toLocalFile(), song.playcount());
+    if (abort_sync_playcount_and_rating_) break;
     (void)tagreader_client_->SaveSongRatingBlocking(song.url().toLocalFile(), song.rating());
     task_manager_->SetTaskProgress(task_id, ++i, nb_songs);
   }
@@ -373,6 +411,8 @@ Song CollectionManager::CurrentLyricsToSave(const SharedPtr<CollectionBackend> &
   // The lyrics could have been changed while the save was deferred, for example in the tag editor, so only save lyrics which are still the same in the collection and still only stored in the database.
   // Otherwise the tags would be overwritten with older lyrics.
   const Song collection_song = backend->GetSongById(song.id());
+  // This is done in a concurrent thread so close the unique DB connection.
+  backend->Close();
   Song song_to_save(song);
   if (song.lyrics_storage_type() == Song::StorageType::Tag && (!collection_song.is_valid() || collection_song.lyrics() != song.lyrics() || collection_song.lyrics_storage_type() != Song::StorageType::Database)) {
     qLog(Debug) << "Lyrics for" << song.url().toLocalFile() << "changed while the save was deferred, not saving them";

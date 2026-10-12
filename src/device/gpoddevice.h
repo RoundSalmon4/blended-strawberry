@@ -2,7 +2,7 @@
  * Strawberry Music Player
  * This file was part of Clementine.
  * Copyright 2010, David Sansome <me@davidsansome.com>
- * Copyright 2018-2021, Jonas Kvinge <jonas@jkvinge.net>
+ * Copyright 2018-2026, Jonas Kvinge <jonas@jkvinge.net>
  *
  * Strawberry is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -86,13 +86,14 @@ class GPodDevice : public ConnectedDevice, public virtual MusicStorage {
   bool FinishDelete(bool success, QString &error_text) override;
 
  protected Q_SLOTS:
-  void LoadFinished(Itdb_iTunesDB *db, const bool success);
+  void LoadFinished(const bool success);
   void LoaderError(const QString &message);
 
  protected:
   Itdb_Track *AddTrackToITunesDb(const Song &metadata);
   void AddTrackToModel(Itdb_Track *track, const QString &prefix);
   bool RemoveTrackFromITunesDb(const QString &path, const QString &relative_to = QString());
+  void RemoveTrackFromITunesDb(Itdb_Track *track);
 
  private:
   void Start();

@@ -33,6 +33,7 @@
 #include "core/urlhandlers.h"
 #include "core/taskmanager.h"
 #include "core/songloader.h"
+#include "collection/collectionbackend.h"
 #include "playlist.h"
 #include "songloaderinserter.h"
 
@@ -114,6 +115,9 @@ void SongLoaderInserter::LoadAudioCD(Playlist *destination, const int row, const
   enqueue_ = enqueue;
   enqueue_next_ = enqueue_next;
 
+  // The tracks are inserted and updated later, so stop using the playlist if it is closed while the audio CD is loading.
+  QObject::connect(destination, &Playlist::destroyed, this, &SongLoaderInserter::DestinationDestroyed);
+
   SongLoader *loader = new SongLoader(url_handlers_, collection_backend_, tagreader_client_, this);
   QObject::connect(loader, &SongLoader::AudioCDTracksLoaded, this, &SongLoaderInserter::AudioCDTracksLoadedSlot);
   QObject::connect(loader, &SongLoader::AudioCDTracksUpdated, this, &SongLoaderInserter::AudioCDTracksUpdatedSlot);
@@ -131,6 +135,9 @@ void SongLoaderInserter::LoadAudioCD(Playlist *destination, const int row, const
       }
     }
     delete loader;
+    // Nothing will be loaded, so AudioCDLoadingFinishedSlot is never called to delete this.
+    deleteLater();
+    return;
   }
 
   // Songs will be loaded later: see AudioCDTracksLoadFinished and AudioCDTagsLoaded slots
@@ -236,6 +243,11 @@ void SongLoaderInserter::AsyncLoad() {
     task_manager_->SetTaskProgress(async_load_id, static_cast<quint64>(songs.count()));
   }
   task_manager_->SetTaskFinished(async_load_id);
+
+  // The song loaders query the collection in this concurrent thread, so close the unique DB connection.
+  if (collection_backend_) {
+    collection_backend_->Close();
+  }
 
   // Replace the partially-loaded items by the new ones, fully loaded.
   Q_EMIT EffectiveLoadFinished(songs);
