@@ -20,6 +20,7 @@
  */
 
 #include <algorithm>
+#include <functional>
 #include <memory>
 
 #include "gtest_include.h"
@@ -29,11 +30,13 @@
 #include "includes/scoped_ptr.h"
 #include "includes/shared_ptr.h"
 #include "core/database.h"
+#include "core/taskmanager.h"
 #include "collection/collectionplaylistitem.h"
 #include "playlist/playlist.h"
 #include "playlist/playlistbackend.h"
 #include "playlist/songplaylistitem.h"
 #include "queue/queue.h"
+#include "smartplaylists/playlistgenerator.h"
 #include "tagreader/tagreaderclient.h"
 #include "tagreader/tagreaderreply.h"
 #include "tagreader/tagreaderresult.h"
@@ -54,12 +57,71 @@
 #include <QThread>
 #include <QEventLoop>
 #include <QTimer>
+#include <QEvent>
+#include <QCoreApplication>
+#include <QElapsedTimer>
+#include <QSemaphore>
+#include <QAtomicInt>
 
 using ::testing::Return;
 
 using namespace Qt::Literals::StringLiterals;
 
 // clazy:excludeall=non-pod-global-static,returning-void-expression
+
+// A dynamic playlist generator which blocks generating more items until it is released, so a test can advance the playlist while items are being generated.
+class BlockingDynamicGenerator : public PlaylistGenerator {
+ public:
+  explicit BlockingDynamicGenerator(const int future, const bool block_generate = false, const bool generate_more_empty = false, QObject *parent = nullptr) : PlaylistGenerator(parent), future_(future), block_generate_(block_generate), generate_more_empty_(generate_more_empty) {}
+
+  Type type() const override { return Type::Query; }
+  void Load(const QByteArray &data) override { Q_UNUSED(data); }
+  QByteArray Save() const override { return QByteArray(); }
+  bool is_dynamic() const override { return true; }
+  int GetDynamicFuture() override { return future_; }
+
+  PlaylistItemPtrList Generate() override {
+    if (block_generate_) release_.acquire();
+    return MakeItems(future_ + 1);
+  }
+
+  PlaylistItemPtrList GenerateMore(const int count) override {
+    requested_.fetchAndAddRelaxed(count);
+    const int active = active_.fetchAndAddRelaxed(1) + 1;
+    int max_active = max_active_.loadRelaxed();
+    while (active > max_active && !max_active_.testAndSetRelaxed(max_active, active, max_active)) {}
+    release_.acquire();
+    const PlaylistItemPtrList items = generate_more_empty_ ? PlaylistItemPtrList() : MakeItems(count);
+    active_.fetchAndSubRelaxed(1);
+    return items;
+  }
+
+  void Release(const int count) { release_.release(count); }
+  int requested() const { return requested_.loadRelaxed(); }
+  int max_active() const { return max_active_.loadRelaxed(); }
+
+ private:
+  PlaylistItemPtrList MakeItems(const int count) {
+    PlaylistItemPtrList items;
+    for (int i = 0; i < count; ++i) {
+      Song song(Song::Source::Stream);
+      const QString title = u"Song %1"_s.arg(next_.fetchAndAddRelaxed(1));
+      song.Init(title, u"Artist"_s, u"Album"_s, 123);
+      song.set_url(QUrl(u"http://example.com/"_s + title));
+      items << PlaylistItem::NewFromSong(song);
+    }
+    return items;
+  }
+
+  const int future_;
+  const bool block_generate_;
+  const bool generate_more_empty_;
+  QSemaphore release_;
+  QAtomicInt requested_;
+  QAtomicInt active_;
+  QAtomicInt max_active_;
+  QAtomicInt next_;
+};
 
 // Declared at file scope (rather than inside the anonymous namespace below, where the TEST_F-generated fixture subclasses live) so that Playlist's "friend class PlaylistTest;" resolves to this exact class.
 // C++ friendship isn't inherited, so tests that need access to Playlist's private members go through the CallXxx() helpers below rather than calling them directly from a TEST_F body.
@@ -152,6 +214,21 @@ class PlaylistTest : public ::testing::Test {
   static QList<int> Sorted(QList<int> list) {
     std::sort(list.begin(), list.end());
     return list;
+  }
+
+  // Exposes the private count of dynamic playlist items which are being generated.
+  static int DynamicItemsPending(const Playlist &playlist) { return playlist.dynamic_items_pending_; }
+
+  // Processes events, including deferred deletes, until the condition is true, bounded by timeout_ms.
+  static bool WaitFor(const std::function<bool()> &condition, const int timeout_ms = 5000) {
+    QElapsedTimer timer;
+    timer.start();
+    while (!condition()) {
+      if (timer.elapsed() > timeout_ms) return false;
+      QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+      QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    }
+    return true;
   }
 
   // Forwards to the private Playlist::RemoveItemsNotInQueue(), which is otherwise only reachable through repopulating a dynamic playlist.
@@ -412,6 +489,164 @@ TEST_F(PlaylistTest, InsertAfterCurrent) {
   EXPECT_EQ(u"Two"_s, playlist_.data(playlist_.index(1, static_cast<int>(Playlist::Column::Title))));
   EXPECT_EQ(u"Four"_s, playlist_.data(playlist_.index(2, static_cast<int>(Playlist::Column::Title))));
   EXPECT_EQ(u"Three"_s, playlist_.data(playlist_.index(3, static_cast<int>(Playlist::Column::Title))));
+
+}
+
+TEST_F(PlaylistTest, InsertAtRowPastEnd) {
+
+  playlist_.InsertItems(PlaylistItemPtrList() << MakeMockItemP(u"One"_s) << MakeMockItemP(u"Two"_s) << MakeMockItemP(u"Three"_s));
+  ASSERT_EQ(3, playlist_.rowCount(QModelIndex()));
+
+  // A row which was valid when loading started, but rows were removed in the meantime.
+  playlist_.InsertItems(PlaylistItemPtrList() << MakeMockItemP(u"Four"_s), 10);
+  ASSERT_EQ(4, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"Four"_s, playlist_.data(playlist_.index(3, static_cast<int>(Playlist::Column::Title))));
+
+  playlist_.undo_stack()->undo();
+  ASSERT_EQ(3, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"Three"_s, playlist_.data(playlist_.index(2, static_cast<int>(Playlist::Column::Title))));
+
+  playlist_.undo_stack()->redo();
+  ASSERT_EQ(4, playlist_.rowCount(QModelIndex()));
+  EXPECT_EQ(u"Four"_s, playlist_.data(playlist_.index(3, static_cast<int>(Playlist::Column::Title))));
+
+}
+
+TEST_F(PlaylistTest, DynamicPlaylistAdvancingWhileGeneratingDoesNotGenerateTooMany) {
+
+  SharedPtr<TaskManager> task_manager = std::make_shared<TaskManager>();
+  Playlist playlist(task_manager, nullptr, nullptr, nullptr, tagreader_client_, 2);
+  playlist.set_sequence(&sequence_);
+
+  constexpr int kFuture = 3;
+  SharedPtr<BlockingDynamicGenerator> generator = std::make_shared<BlockingDynamicGenerator>(kFuture);
+  playlist.InsertSmartPlaylist(generator);
+  ASSERT_TRUE(WaitFor([&playlist]() { return playlist.rowCount() == kFuture + 1; }));
+  ASSERT_TRUE(playlist.is_dynamic());
+
+  // Advancing generates one more item, which blocks in the generator.
+  playlist.set_current_row(0);
+  playlist.set_current_row(1);
+  EXPECT_EQ(1, DynamicItemsPending(playlist));
+
+  // Advancing again before that item is inserted should only generate one more item, not the pending one again.
+  // It is generated after the first one is inserted, so the items are inserted in the order they were requested.
+  playlist.set_current_row(2);
+  EXPECT_EQ(2, DynamicItemsPending(playlist));
+  // GenerateMore() runs in a concurrent thread, so wait until it started.
+  EXPECT_TRUE(WaitFor([&generator]() { return generator->requested() > 0; }));
+  EXPECT_EQ(1, generator->requested());
+
+  // The items are no longer pending when they are inserted, otherwise advancing while inserting counts them twice.
+  QList<int> pending_when_inserted;
+  QObject::connect(&playlist, &Playlist::rowsInserted, &playlist, [&playlist, &pending_when_inserted]() { pending_when_inserted << DynamicItemsPending(playlist); });
+
+  generator->Release(2);
+  ASSERT_TRUE(WaitFor([&playlist]() { return playlist.rowCount() == 2 + 1 + kFuture; }));
+  EXPECT_EQ(0, DynamicItemsPending(playlist));
+  EXPECT_EQ(QList<int>() << 1 << 0, pending_when_inserted);
+
+  EXPECT_EQ(2, generator->requested());
+  EXPECT_EQ(1, generator->max_active());
+  // The history, the current item and the future, the generated items in the order they were generated.
+  ASSERT_EQ(2 + 1 + kFuture, playlist.rowCount());
+  EXPECT_EQ(u"Song 4"_s, TitleAt(playlist, 4));
+  EXPECT_EQ(u"Song 5"_s, TitleAt(playlist, 5));
+
+}
+
+TEST_F(PlaylistTest, DynamicPlaylistAdvancingWhileInitialGenerationDoesNotGenerateMore) {
+
+  SharedPtr<TaskManager> task_manager = std::make_shared<TaskManager>();
+  Playlist playlist(task_manager, nullptr, nullptr, nullptr, tagreader_client_, 2);
+  playlist.set_sequence(&sequence_);
+
+  // A playlist which is already playing.
+  playlist.InsertItems(PlaylistItemPtrList() << MakeStreamItem(u"One"_s) << MakeStreamItem(u"Two"_s));
+  playlist.set_current_row(0);
+
+  // Inserting a dynamic playlist generates its future, which blocks in the generator.
+  constexpr int kFuture = 3;
+  SharedPtr<BlockingDynamicGenerator> generator = std::make_shared<BlockingDynamicGenerator>(kFuture, true);
+  playlist.InsertSmartPlaylist(generator);
+  ASSERT_TRUE(playlist.is_dynamic());
+  EXPECT_EQ(kFuture, DynamicItemsPending(playlist));
+
+  // Advancing before the future is generated should not generate it again.
+  playlist.set_current_row(1);
+  EXPECT_EQ(0, generator->requested());
+
+  // Release one more than needed, so generating more by mistake fails the test instead of blocking forever.
+  generator->Release(2);
+  ASSERT_TRUE(WaitFor([&playlist]() { return playlist.rowCount() == 2 + kFuture + 1; }));
+  EXPECT_EQ(0, DynamicItemsPending(playlist));
+  EXPECT_EQ(0, generator->requested());
+
+}
+
+TEST_F(PlaylistTest, DynamicPlaylistReplacedWhileGeneratingDoesNotCountOldItems) {
+
+  SharedPtr<TaskManager> task_manager = std::make_shared<TaskManager>();
+  Playlist playlist(task_manager, nullptr, nullptr, nullptr, tagreader_client_, 2);
+  playlist.set_sequence(&sequence_);
+
+  constexpr int kFuture = 3;
+  SharedPtr<BlockingDynamicGenerator> old_generator = std::make_shared<BlockingDynamicGenerator>(kFuture);
+  playlist.InsertSmartPlaylist(old_generator);
+  ASSERT_TRUE(WaitFor([&playlist]() { return playlist.rowCount() == kFuture + 1; }));
+
+  // Advancing generates one more item for the old dynamic playlist, which blocks in the generator.
+  playlist.set_current_row(0);
+  playlist.set_current_row(1);
+  EXPECT_EQ(1, DynamicItemsPending(playlist));
+
+  // Replacing the dynamic playlist does not count the item still being generated for the old one.
+  SharedPtr<BlockingDynamicGenerator> new_generator = std::make_shared<BlockingDynamicGenerator>(kFuture);
+  playlist.InsertSmartPlaylist(new_generator);
+  ASSERT_TRUE(WaitFor([&playlist]() { return playlist.rowCount() == 2 * (kFuture + 1); }));
+  EXPECT_EQ(0, DynamicItemsPending(playlist));
+
+  playlist.ExpandDynamicPlaylist();
+  EXPECT_EQ(5, DynamicItemsPending(playlist));
+
+  // Finishing the old request does not change the count for the new dynamic playlist.
+  old_generator->Release(1);
+  ASSERT_TRUE(WaitFor([&playlist]() { return playlist.rowCount() == 2 * (kFuture + 1) + 1; }));
+  QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+  EXPECT_EQ(5, DynamicItemsPending(playlist));
+
+  new_generator->Release(1);
+  ASSERT_TRUE(WaitFor([&playlist]() { return DynamicItemsPending(playlist) == 0; }));
+  EXPECT_EQ(2 * (kFuture + 1) + 1 + 5, playlist.rowCount());
+
+}
+
+TEST_F(PlaylistTest, DynamicPlaylistReplacedWhileGeneratingIsNotTurnedOffByOldEmptyResult) {
+
+  SharedPtr<TaskManager> task_manager = std::make_shared<TaskManager>();
+  Playlist playlist(task_manager, nullptr, nullptr, nullptr, tagreader_client_, 2);
+  playlist.set_sequence(&sequence_);
+
+  // The old dynamic playlist has no more items.
+  constexpr int kFuture = 3;
+  SharedPtr<BlockingDynamicGenerator> old_generator = std::make_shared<BlockingDynamicGenerator>(kFuture, false, true);
+  playlist.InsertSmartPlaylist(old_generator);
+  ASSERT_TRUE(WaitFor([&playlist]() { return playlist.rowCount() == kFuture + 1; }));
+
+  playlist.set_current_row(0);
+  playlist.set_current_row(1);
+  // GenerateMore() runs in a concurrent thread, so wait until it started.
+  EXPECT_TRUE(WaitFor([&old_generator]() { return old_generator->requested() == 1; }));
+
+  SharedPtr<BlockingDynamicGenerator> new_generator = std::make_shared<BlockingDynamicGenerator>(kFuture);
+  playlist.InsertSmartPlaylist(new_generator);
+  ASSERT_TRUE(WaitFor([&playlist]() { return playlist.rowCount() == 2 * (kFuture + 1); }));
+
+  // The old request finishes without items, which turns off the old dynamic playlist, but not the new one.
+  old_generator->Release(1);
+  ASSERT_TRUE(WaitFor([&task_manager]() { return task_manager->GetTasks().isEmpty(); }));
+  EXPECT_TRUE(playlist.is_dynamic());
+  EXPECT_EQ(2 * (kFuture + 1), playlist.rowCount());
 
 }
 
@@ -1830,6 +2065,60 @@ TEST_F(PlaylistTest, QueueDropOnlyAcceptsExistingRowsOfOwnPlaylist) {
     EXPECT_EQ(1, playlist_.queue()->rowCount(QModelIndex()));
     EXPECT_TRUE(playlist_.queue()->ContainsSourceRow(0));
   }
+
+}
+
+// Regression test: moving queued rows must put them before the row they are dropped on, counting from before they are taken out.
+TEST_F(PlaylistTest, QueueMove) {
+
+  playlist_.InsertItems(PlaylistItemPtrList() << MakeMockItemP(u"0"_s) << MakeMockItemP(u"1"_s) << MakeMockItemP(u"2"_s) << MakeMockItemP(u"3"_s) << MakeMockItemP(u"4"_s));
+
+  Queue *queue = playlist_.queue();
+  const auto queued_source_rows = [queue]() {
+    QList<int> rows;
+    for (int i = 0; i < queue->rowCount(QModelIndex()); ++i) {
+      rows << queue->mapToSource(queue->index(i, 0)).row();
+    }
+    return rows;
+  };
+  const auto reset_queue = [this, queue]() {
+    queue->Clear();
+    QModelIndexList source_indexes;
+    for (int i = 0; i < playlist_.rowCount(QModelIndex()); ++i) {
+      source_indexes << playlist_.index(i, 0);
+    }
+    queue->ToggleTracks(source_indexes);
+  };
+
+  reset_queue();
+  ASSERT_EQ(QList<int>() << 0 << 1 << 2 << 3 << 4, queued_source_rows());
+
+  // Dropping rows right before the row after them changes nothing.
+  queue->Move(QList<int>() << 0 << 1 << 2, 3);
+  EXPECT_EQ(QList<int>() << 0 << 1 << 2 << 3 << 4, queued_source_rows());
+
+  // Dropping a row on itself changes nothing.
+  queue->Move(QList<int>() << 2, 2);
+  EXPECT_EQ(QList<int>() << 0 << 1 << 2 << 3 << 4, queued_source_rows());
+
+  queue->Move(QList<int>() << 0 << 2, 4);
+  EXPECT_EQ(QList<int>() << 1 << 3 << 0 << 2 << 4, queued_source_rows());
+
+  reset_queue();
+  queue->Move(QList<int>() << 3 << 4, 1);
+  EXPECT_EQ(QList<int>() << 0 << 3 << 4 << 1 << 2, queued_source_rows());
+
+  reset_queue();
+  queue->Move(QList<int>() << 1, -1);
+  EXPECT_EQ(QList<int>() << 0 << 2 << 3 << 4 << 1, queued_source_rows());
+
+  reset_queue();
+  queue->MoveUp(2);
+  EXPECT_EQ(QList<int>() << 0 << 2 << 1 << 3 << 4, queued_source_rows());
+
+  reset_queue();
+  queue->MoveDown(2);
+  EXPECT_EQ(QList<int>() << 0 << 1 << 3 << 2 << 4, queued_source_rows());
 
 }
 

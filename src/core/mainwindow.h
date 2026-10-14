@@ -34,6 +34,7 @@
 #include <QSortFilterProxyModel>
 #include <QAbstractItemModel>
 #include <QPersistentModelIndex>
+#include <QPointer>
 #include <QMenu>
 #include <QAction>
 #include <QPoint>
@@ -41,6 +42,7 @@
 #include <QList>
 #include <QByteArray>
 #include <QString>
+#include <QStringList>
 #include <QUrl>
 #include <QImage>
 #include <QTimer>
@@ -279,7 +281,7 @@ class MainWindow : public QMainWindow, public PlatformInterface {
 
   void FocusSearchField();
 
-  void DeleteFilesFinished(const SongList &songs_with_errors);
+  void DeleteFilesFinished(const SongList &songs_with_errors, const QStringList &log);
 
   void FetchStreamingMetadata();
   void ProcessMetadataQueue();
@@ -328,6 +330,7 @@ class MainWindow : public QMainWindow, public PlatformInterface {
   Lazy<AboutDialog> about_dialog_;
   Lazy<Console> console_;
   Lazy<EditTagDialog> edit_tag_dialog_;
+  QPointer<Playlist> edit_tag_dialog_playlist_;
   AlbumCoverChoiceController *album_cover_choice_controller_;
 
   GlobalShortcutsManager *globalshortcuts_manager_;

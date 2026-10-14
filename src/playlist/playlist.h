@@ -29,6 +29,7 @@
 #include <QAbstractItemModel>
 #include <QAbstractListModel>
 #include <QPersistentModelIndex>
+#include <QPointer>
 #include <QFuture>
 #include <QList>
 #include <QMap>
@@ -63,6 +64,7 @@ class CollectionBackend;
 class PlaylistBackend;
 class PlaylistFilter;
 class Queue;
+class PlaylistGeneratorInserter;
 class RadioService;
 
 namespace PlaylistUndoCommands {
@@ -372,7 +374,7 @@ class Playlist : public QAbstractListModel {
   void InsertSongItems(const SongList &songs, const int pos, const bool play_now, const bool enqueue, const bool enqueue_next = false, const bool signal = false);
 
   // Inserts the items through the undo stack, and auto-sorts afterwards if enabled, so that undo and redo replay the insert and the sort in the right order.
-  void InsertItemsWithUndo(const PlaylistItemPtrList &items, const int pos, const bool enqueue = false, const bool enqueue_next = false);
+  void InsertItemsWithUndo(const PlaylistItemPtrList &items, const int requested_pos, const bool enqueue = false, const bool enqueue_next = false);
 
   // Modify the playlist without changing the undo stack.  These are used by our friends in PlaylistUndoCommands
   void InsertItemsWithoutUndo(const PlaylistItemPtrList &items, const int pos, const bool enqueue = false, const bool enqueue_next = false);
@@ -393,6 +395,8 @@ class Playlist : public QAbstractListModel {
   bool removeRows(QList<int> &rows);
 
   void TurnOnDynamicPlaylist(PlaylistGeneratorPtr gen);
+  void ResetDynamicItemsPending();
+  PlaylistGeneratorInserter *NewDynamicInserter(const int count);
   void InsertDynamicItems(const int count);
 
   // Grays out and reloads all deleted songs in all playlists. Also, "ungreys" those songs which were once deleted but now got restored somehow.
@@ -483,6 +487,13 @@ class Playlist : public QAbstractListModel {
   qint64 scrobble_point_;
 
   PlaylistGeneratorPtr dynamic_playlist_;
+  // The number of dynamic playlist items which are being generated, but not inserted yet.
+  // Only items for the current dynamic playlist are counted, the generation changes when the dynamic playlist is turned on or off, so items requested before are not counted.
+  int dynamic_items_pending_;
+  // The number of pending items which are not being generated yet, since only one batch is generated at a time.
+  int dynamic_items_queued_;
+  quint64 dynamic_generation_;
+  QPointer<PlaylistGeneratorInserter> dynamic_inserter_;
 
   bool auto_sort_;
   bool is_sorted_;

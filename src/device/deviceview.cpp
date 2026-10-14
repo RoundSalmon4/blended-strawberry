@@ -361,7 +361,12 @@ void DeviceView::Forget() {
 }
 
 void DeviceView::Properties() {
-  properties_dialog_->ShowDevice(MapToDevice(menu_index_));
+
+  const QModelIndex device_idx = MapToDevice(menu_index_);
+  if (!device_idx.isValid()) return;
+
+  properties_dialog_->ShowDevice(device_idx);
+
 }
 
 void DeviceView::mouseDoubleClickEvent(QMouseEvent *e) {
@@ -462,13 +467,13 @@ void DeviceView::Unmount() {
   device_manager_->Unmount(device_idx);
 }
 
-void DeviceView::DeleteFinished(const SongList &songs_with_errors) {
+void DeviceView::DeleteFinished(const SongList &songs_with_errors, const QStringList &log) {
 
-  if (songs_with_errors.isEmpty()) return;
+  if (songs_with_errors.isEmpty() && log.isEmpty()) return;
 
   OrganizeErrorDialog *dialog = new OrganizeErrorDialog(this);
   dialog->setAttribute(Qt::WA_DeleteOnClose);
-  dialog->Show(OrganizeErrorDialog::OperationType::Delete, songs_with_errors);
+  dialog->Show(OrganizeErrorDialog::OperationType::Delete, songs_with_errors, log);
 
 }
 

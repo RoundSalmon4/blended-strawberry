@@ -243,7 +243,7 @@ void OpenTidalCoverProvider::OAuthFinished(const bool success, const QString &er
 JsonBaseRequest::JsonObjectResult OpenTidalCoverProvider::ParseJsonObject(QNetworkReply *reply) {
 
   if (reply->error() != QNetworkReply::NoError && reply->error() < 200) {
-    return ReplyDataResult(ErrorCode::NetworkError, QStringLiteral("%1 (%2)").arg(reply->errorString()).arg(reply->error()));
+    return ReplyDataResult(ErrorCode::NetworkError, QStringLiteral("%1 (%2)").arg(reply->errorString(), QString::number(reply->error())));
   }
 
   JsonObjectResult result(ErrorCode::Success);
@@ -290,7 +290,7 @@ JsonBaseRequest::JsonObjectResult OpenTidalCoverProvider::ParseJsonObject(QNetwo
   if (result.error_code != ErrorCode::APIError) {
     if (reply->error() != QNetworkReply::NoError) {
       result.error_code = ErrorCode::NetworkError;
-      result.error_message = QStringLiteral("%1 (%2)").arg(reply->errorString()).arg(reply->error());
+      result.error_message = QStringLiteral("%1 (%2)").arg(reply->errorString(), QString::number(reply->error()));
     }
     else if (result.http_status_code != 200) {
       result.error_code = ErrorCode::HttpError;
@@ -345,7 +345,7 @@ void OpenTidalCoverProvider::HandleSearchReply(QNetworkReply *reply, SearchReque
   QObject::disconnect(reply, nullptr, this, nullptr);
   reply->deleteLater();
 
-  const QScopeGuard search_finished = qScopeGuard([this, search_request]() {
+  QScopeGuard search_finished = qScopeGuard([this, search_request]() {
     if (!search_request->finished && search_request->albumcover_requests.isEmpty()) {
       Q_EMIT SearchFinished(search_request->id, search_request->results);
       search_request->finished = true;
@@ -355,8 +355,13 @@ void OpenTidalCoverProvider::HandleSearchReply(QNetworkReply *reply, SearchReque
   const JsonObjectResult json_object_result = ParseJsonObject(reply);
   if (!json_object_result.success()) {
     Error(json_object_result.error_message);
+    // Try again after logging in, the search is not finished then.
     if (login_in_progress_) {
+      search_finished.dismiss();
       search_requests_queue_.prepend(make_shared<QueuedSearchRequest>(search_request));
+      if (!timer_flush_requests_->isActive()) {
+        timer_flush_requests_->start();
+      }
     }
     return;
   }
@@ -427,7 +432,7 @@ void OpenTidalCoverProvider::HandleAlbumCoverReply(QNetworkReply *reply, SearchR
   QObject::disconnect(reply, nullptr, this, nullptr);
   reply->deleteLater();
 
-  const QScopeGuard search_finished = qScopeGuard([this, search_request, albumcover_request]() {
+  QScopeGuard search_finished = qScopeGuard([this, search_request, albumcover_request]() {
     if (albumcover_request->artwork_requests.isEmpty()) {
       search_request->albumcover_requests.removeAll(albumcover_request);
     }
@@ -440,8 +445,13 @@ void OpenTidalCoverProvider::HandleAlbumCoverReply(QNetworkReply *reply, SearchR
   const JsonObjectResult json_object_result = ParseJsonObject(reply);
   if (!json_object_result.success()) {
     Error(json_object_result.error_message);
+    // Try again after logging in, keep the request in the search, so the search is not finished before it.
     if (login_in_progress_) {
+      search_finished.dismiss();
       albumcover_requests_queue_.prepend(make_shared<QueuedAlbumCoverRequest>(search_request, albumcover_request));
+      if (!timer_flush_requests_->isActive()) {
+        timer_flush_requests_->start();
+      }
     }
     return;
   }
@@ -508,7 +518,7 @@ void OpenTidalCoverProvider::HandleArtworkReply(QNetworkReply *reply, SearchRequ
   QObject::disconnect(reply, nullptr, this, nullptr);
   reply->deleteLater();
 
-  const QScopeGuard search_finished = qScopeGuard([this, search_request, albumcover_request, artwork_request]() {
+  QScopeGuard search_finished = qScopeGuard([this, search_request, albumcover_request, artwork_request]() {
     albumcover_request->artwork_requests.removeAll(artwork_request);
     if (albumcover_request->artwork_requests.isEmpty()) {
       search_request->albumcover_requests.removeAll(albumcover_request);
@@ -522,8 +532,13 @@ void OpenTidalCoverProvider::HandleArtworkReply(QNetworkReply *reply, SearchRequ
   const JsonObjectResult json_object_result = ParseJsonObject(reply);
   if (!json_object_result.success()) {
     Error(json_object_result.error_message);
+    // Try again after logging in, keep the request in the album cover request, so the search is not finished before it.
     if (login_in_progress_) {
+      search_finished.dismiss();
       artwork_requests_queue_.prepend(make_shared<QueuedArtworkRequest>(search_request, albumcover_request, artwork_request));
+      if (!timer_flush_requests_->isActive()) {
+        timer_flush_requests_->start();
+      }
     }
     return;
   }
@@ -574,12 +589,22 @@ void OpenTidalCoverProvider::HandleArtworkReply(QNetworkReply *reply, SearchRequ
 
 void OpenTidalCoverProvider::FinishAllSearches() {
 
+  // The album cover and artwork requests that are waiting to be sent, also the ones to try again after logging in, can't be sent either, so finish their searches with the results so far.
+  QList<SearchRequestPtr> search_requests;
   while (!search_requests_queue_.isEmpty()) {
-    QueuedSearchRequestPtr queued_search_request = search_requests_queue_.dequeue();
-    SearchRequestPtr search_request = queued_search_request->search;
+    search_requests << search_requests_queue_.dequeue()->search;
+  }
+  while (!albumcover_requests_queue_.isEmpty()) {
+    search_requests << albumcover_requests_queue_.dequeue()->search;
+  }
+  while (!artwork_requests_queue_.isEmpty()) {
+    search_requests << artwork_requests_queue_.dequeue()->search;
+  }
+
+  for (const SearchRequestPtr &search_request : std::as_const(search_requests)) {
     search_request->albumcover_requests.clear();
     if (!search_request->finished) {
-      Q_EMIT SearchFinished(search_request->id, CoverProviderSearchResults());
+      Q_EMIT SearchFinished(search_request->id, search_request->results);
       search_request->finished = true;
     }
   }
