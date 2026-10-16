@@ -1005,13 +1005,11 @@ void TagReaderTagLib::ParseMP4Tags(TagLib::MP4::Tag *tag, QString *disc, QString
 
   song->set_comment(tag->comment());
 
+  // The BPM is an integer item, TagLib always reads it as an integer, so the string list is empty.
   if (tag->item(kMP4_BPM).isValid()) {
-    const TagLib::MP4::Item item = tag->item(kMP4_BPM);
-    if (item.isValid()) {
-      const float bpm = TagLibStringToQString(item.toStringList().toString('\n')).toFloat();
-      if (bpm > 0) {
-        song->set_bpm(bpm);
-      }
+    const int bpm = tag->item(kMP4_BPM).toInt();
+    if (bpm > 0) {
+      song->set_bpm(static_cast<float>(bpm));
     }
   }
 
@@ -1057,7 +1055,6 @@ void TagReaderTagLib::ParseMP4Tags(TagLib::MP4::Tag *tag, QString *disc, QString
 
 void TagReaderTagLib::ParseASFTags(TagLib::ASF::Tag *tag, QString *disc, QString *compilation, Song *song) const {
 
-  Q_UNUSED(disc);
   Q_UNUSED(compilation);
 
   const TagLib::ASF::AttributeListMap &attributes_map = tag->attributeListMap();
@@ -1083,10 +1080,18 @@ void TagReaderTagLib::ParseASFTags(TagLib::ASF::Tag *tag, QString *disc, QString
   ParseASFAttribute(attributes_map, kASF_MusicBrainz_ReleaseGroupId, song->mutable_musicbrainz_release_group_id());
   ParseASFAttribute(attributes_map, kASF_MusicBrainz_WorkId, song->mutable_musicbrainz_work_id());
 
+  // The disc can include the number of discs, like "1/2", which is handled with the disc of the other tag types, so only set the text here.
+  // It's normally text, but some taggers write it as a number.
   if (attributes_map.contains(kASF_Disc)) {
     const TagLib::ASF::AttributeList &attributes = attributes_map[kASF_Disc];
     if (!attributes.isEmpty()) {
-      song->set_disc(TagLibStringToQString(attributes.front().toString()).toInt());
+      const TagLib::ASF::Attribute &attribute = attributes.front();
+      if (attribute.type() == TagLib::ASF::Attribute::UnicodeType) {
+        *disc = TagLibStringToQString(attribute.toString()).trimmed();
+      }
+      else if (attribute.type() == TagLib::ASF::Attribute::DWordType) {
+        *disc = QString::number(attribute.toUInt());
+      }
     }
   }
 

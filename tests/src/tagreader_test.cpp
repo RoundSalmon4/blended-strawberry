@@ -25,6 +25,8 @@
 #include <string>
 
 #include <QFile>
+#include <QPair>
+#include <QList>
 #include <QByteArray>
 #include <QString>
 #include <QCryptographicHash>
@@ -36,8 +38,12 @@
 #include <taglib/asftag.h>
 #include <taglib/asfattribute.h>
 #include <taglib/mpegfile.h>
+#include <taglib/mp4file.h>
+#include <taglib/mp4tag.h>
+#include <taglib/mp4item.h>
 #include <taglib/id3v2tag.h>
 #include <taglib/id3v2header.h>
+#include <taglib/popularimeterframe.h>
 
 #include "core/logging.h"
 #include "core/song.h"
@@ -2205,6 +2211,21 @@ TEST_F(TagReaderTest, TestMP3AudioFileCompilation) {
 
 }
 
+TEST_F(TagReaderTest, TestMP4AudioFileReadBPM) {
+
+  TemporaryResource r(u":/audio/strawberry.m4a"_s);
+
+  // The BPM is an integer item.
+  {
+    TagLib::MP4::File file(TagLibFileName(r.fileName()).data());
+    ASSERT_TRUE(file.isValid());
+    file.tag()->setItem("tmpo", TagLib::MP4::Item(128));
+    ASSERT_TRUE(file.save());
+  }
+  EXPECT_EQ(128.0F, ReadSongFromFile(r.fileName()).bpm());
+
+}
+
 TEST_F(TagReaderTest, TestMP4AudioFileCompilation) {
 
   TemporaryResource r(u":/audio/strawberry.m4a"_s);
@@ -2709,6 +2730,36 @@ TEST_F(TagReaderTest, TestASFAudioFilePlaycountAndRatingRemoved) {
 
 }
 
+TEST_F(TagReaderTest, TestASFAudioFileReadDiscWithNumberOfDiscs) {
+
+  TemporaryResource r(u":/audio/strawberry.asf"_s);
+
+  // The disc can include the number of discs.
+  {
+    TagLib::ASF::File file(TagLibFileName(r.fileName()).data());
+    ASSERT_TRUE(file.isValid());
+    file.tag()->setAttribute("WM/PartOfSet", TagLib::ASF::Attribute(TagLib::String("2/3")));
+    ASSERT_TRUE(file.save());
+  }
+  EXPECT_EQ(2, ReadSongFromFile(r.fileName()).disc());
+
+  // Some taggers write it as a number.
+  {
+    TagLib::ASF::File file(TagLibFileName(r.fileName()).data());
+    ASSERT_TRUE(file.isValid());
+    file.tag()->setAttribute("WM/PartOfSet", TagLib::ASF::Attribute(static_cast<unsigned int>(4)));
+    ASSERT_TRUE(file.save());
+  }
+  EXPECT_EQ(4, ReadSongFromFile(r.fileName()).disc());
+
+  // Written by Strawberry.
+  Song song;
+  song.set_disc(5);
+  EXPECT_TRUE(WriteSongToFile(song, r.fileName()).success());
+  EXPECT_EQ(5, ReadSongFromFile(r.fileName()).disc());
+
+}
+
 TEST_F(TagReaderTest, TestASFAudioFileReadLegacyPlaycountAndRating) {
 
   TemporaryResource r(u":/audio/strawberry.asf"_s);
@@ -2768,6 +2819,38 @@ TEST_F(TagReaderTest, TestMP3AudioFileRating) {
   {
     Song song = ReadSongFromFile(r.fileName());
     EXPECT_EQ(0.4F, song.rating());
+  }
+
+}
+
+// Ratings computed with floats can be slightly lower, like 0.59999996 for 3 stars, which should still be written as 3 stars.
+TEST_F(TagReaderTest, TestMP3AudioFilePOPMRatingRounding) {
+
+  TemporaryResource r(u":/audio/strawberry.mp3"_s);
+
+  const auto popm_rating = [&r]() {
+    TagLib::MPEG::File file(TagLibFileName(r.fileName()).data());
+    if (!file.isValid() || !file.hasID3v2Tag()) return -1;
+    const TagLib::ID3v2::FrameList frames = file.ID3v2Tag()->frameListMap()["POPM"];
+    if (frames.isEmpty()) return -1;
+    const TagLib::ID3v2::PopularimeterFrame *frame = dynamic_cast<TagLib::ID3v2::PopularimeterFrame*>(frames.front());
+    return frame ? frame->rating() : -1;
+  };
+
+  const QList<QPair<float, int>> ratings = QList<QPair<float, int>>()
+    << qMakePair(1.0F / 5.0F, 0x01)
+    << qMakePair(2.0F / 5.0F, 0x40)
+    << qMakePair(0.59999996F, 0x80)
+    << qMakePair(3.0F / 5.0F, 0x80)
+    << qMakePair(0.79999995F, 0xC0)
+    << qMakePair(0.99999994F, 0xFF)
+    << qMakePair(0.5F, 0x40);
+
+  for (const QPair<float, int> &rating : ratings) {
+    Song song;
+    song.set_rating(rating.first);
+    WriteSongRatingToFile(song, r.fileName());
+    EXPECT_EQ(rating.second, popm_rating()) << "Rating " << rating.first;
   }
 
 }

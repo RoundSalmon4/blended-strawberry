@@ -211,6 +211,7 @@ GstEnginePipeline::GstEnginePipeline(QObject *parent)
       bufferprobe_(nullptr),
       logged_unsupported_analyzer_format_(false),
       about_to_finish_(false),
+      gapless_transition_(false),
       finish_requested_(false),
       finished_(false),
       bus_message_generation_(0),
@@ -829,36 +830,21 @@ bool GstEnginePipeline::InitAudioBin(QString &error) {
     }
     // Setting the equalizer bands:
     //
-    // GStreamer's GstIirEqualizerNBands sets up shelve filters for the first and last bands as corner cases.
-    // That was causing the "inverted slider" bug.
-    // As a workaround, we create two dummy bands at both ends of the spectrum.
-    // This causes the actual first and last adjustable bands to be implemented using band-pass filters.
+    // GstIirEqualizerNBands uses a low shelf filter for the first band and a high shelf filter for the last band, which boost or cut everything below or above them, that was causing the "inverted slider" bug.
+    // Set all bands to peak filters, so the first and last bands only change the frequencies around them like the others.
+    // The band properties are doubles, and g_object_set() reads the arguments as the type of the property, so the values have to be passed as doubles.
 
-    g_object_set(G_OBJECT(equalizer_), "num-bands", kEqBandCount + 2, nullptr);
-
-    // Dummy first band (bandwidth 0, cutting below 20Hz):
-    GstObject *first_band = GST_OBJECT(gst_child_proxy_get_child_by_index(GST_CHILD_PROXY(equalizer_), 0));
-    if (first_band) {
-      g_object_set(G_OBJECT(first_band), "freq", 20.0, "bandwidth", 0, "gain", 0.0F, nullptr);
-      g_object_unref(G_OBJECT(first_band));
-    }
-
-    // Dummy last band (bandwidth 0, cutting over 20KHz):
-    GstObject *last_band = GST_OBJECT(gst_child_proxy_get_child_by_index(GST_CHILD_PROXY(equalizer_), kEqBandCount + 1));
-    if (last_band) {
-      g_object_set(G_OBJECT(last_band), "freq", 20000.0, "bandwidth", 0, "gain", 0.0F, nullptr);
-      g_object_unref(G_OBJECT(last_band));
-    }
+    g_object_set(G_OBJECT(equalizer_), "num-bands", kEqBandCount, nullptr);
 
     int last_band_frequency = 0;
     for (int i = 0; i < kEqBandCount; ++i) {
-      const int index_in_eq = i + 1;
-      GstObject *band = GST_OBJECT(gst_child_proxy_get_child_by_index(GST_CHILD_PROXY(equalizer_), static_cast<guint>(index_in_eq)));
+      GstObject *band = GST_OBJECT(gst_child_proxy_get_child_by_index(GST_CHILD_PROXY(equalizer_), static_cast<guint>(i)));
       if (band) {
         const float frequency = static_cast<float>(kEqBandFrequencies[i]);
         const float bandwidth = frequency - static_cast<float>(last_band_frequency);
         last_band_frequency = static_cast<int>(frequency);
-        g_object_set(G_OBJECT(band), "freq", frequency, "bandwidth", bandwidth, "gain", 0.0F, nullptr);
+        gst_util_set_object_arg(G_OBJECT(band), "type", "peak");
+        g_object_set(G_OBJECT(band), "freq", static_cast<double>(frequency), "bandwidth", static_cast<double>(bandwidth), "gain", 0.0, nullptr);
         g_object_unref(G_OBJECT(band));
       }
 
@@ -1322,7 +1308,8 @@ void GstEnginePipeline::NotifyVolumeCallback(GstElement *element, GParamSpec *pa
   // Ignore device-originated volume changes during a gapless transition.
   // When the next track has a different sample rate the sink renegotiates in place and can reset the (device) stream volume; that is not a user action, so adopting it here would clobber the slider (and the stored volume).
   // StreamStartMessageReceived re-asserts the correct volume once the new stream has started.
-  if (instance->about_to_finish_.load()) return;
+  // This is not about_to_finish_, since that is cleared when the next URL is set, before the transition.
+  if (instance->gapless_transition_.load()) return;
 
   // Read the property from the element that actually fired the signal, not from instance->volume_
   // SetupVolume may have swapped volume_ between the signal being queued and this callback running,
@@ -1358,7 +1345,7 @@ void GstEnginePipeline::NotifyMuteCallback(GstElement *element, GParamSpec *para
 
   // Ignore device-originated mute changes during a gapless transition, for the same reason NotifyVolumeCallback does: a sink renegotiation is not a user action.
   // StreamStartMessageReceived re-asserts the correct mute state once the new stream has started.
-  if (instance->about_to_finish_.load()) return;
+  if (instance->gapless_transition_.load()) return;
 
   // Read the property from the element that actually fired the signal, not from instance->volume_ - see NotifyVolumeCallback for why.
   gboolean mute = FALSE;
@@ -1677,6 +1664,9 @@ GstPadProbeReturn GstEnginePipeline::BufferProbeCallback(GstPad *pad, GstPadProb
         instance->next_end_offset_nanosec_.store(0);
       }
 
+      // The stream continues, so there is no stream start which ends the transition.
+      instance->gapless_transition_ = false;
+
       // GstEngine will try to seek to the start of the new section, but we're already there so ignore it.
       instance->ignore_next_seek_ = true;
       Q_EMIT instance->EndOfStreamReached(instance->id(), true);
@@ -1868,6 +1858,7 @@ void GstEnginePipeline::StreamStartMessageReceived() {
 
   // Clear the transition flag only after re-asserting, so NotifyVolumeCallback/NotifyMuteCallback keep ignoring the renegotiation's reset for the whole transition.
   about_to_finish_ = false;
+  gapless_transition_ = false;
 
   Q_EMIT EndOfStreamReached(id(), true);
 
@@ -1941,6 +1932,8 @@ void GstEnginePipeline::ErrorMessageReceived(GstMessage *msg) {
       return;
     }
     qLog(Info) << "Ignoring error" << domain << code << message << debugstr << "when loading next track";
+    // The next track can't be played, so there is no transition to it.
+    gapless_transition_ = false;
     GstPad *pad = gst_element_get_static_pad(audiobin_, "sink");
     if (pad) {
       QFuture<gboolean> future = QtConcurrent::run(shared_pad_send_threadpool(), [pad]() {
@@ -2109,6 +2102,8 @@ void GstEnginePipeline::StateChangedMessageReceived(GstMessage *msg) {
   if (next_uri_set_.load() && next_uri_need_reset_.load() && new_state == GST_STATE_READY && pending_seek_nanosec_.load() != -1) {
     qLog(Debug) << "Reverting next uri and going to pause state.";
     next_uri_set_ = false;
+    // There is no transition to the next stream now.
+    gapless_transition_ = false;
     {
       QMutexLocker l(&mutex_url_);
       g_object_set(G_OBJECT(pipeline_), "uri", gst_url_.constData(), nullptr);
@@ -2688,10 +2683,9 @@ void GstEnginePipeline::UpdateEqualizer() {
       gain *= 0.12F;
     }
 
-    const int index_in_eq = i + 1;
-    // Offset because of the first dummy band we created.
-    GstObject *band = GST_OBJECT(gst_child_proxy_get_child_by_index(GST_CHILD_PROXY(equalizer_), static_cast<guint>(index_in_eq)));
-    g_object_set(G_OBJECT(band), "gain", gain, nullptr);
+    GstObject *band = GST_OBJECT(gst_child_proxy_get_child_by_index(GST_CHILD_PROXY(equalizer_), static_cast<guint>(i)));
+    if (!band) continue;
+    g_object_set(G_OBJECT(band), "gain", static_cast<double>(gain), nullptr);
     g_object_unref(G_OBJECT(band));
   }
 
@@ -3000,6 +2994,9 @@ void GstEnginePipeline::SetNextUrl() {
   // When the next uri is not playable an error message is send when the pipeline goes to PLAY (or PAUSE) state or immediately if it is currently in PLAY state.
   {
     QMutexLocker l(&mutex_next_url_);
+    // The transition happens when the current stream ends, so keep ignoring volume and mute changes until the next stream started.
+    // This is set before the next URL, since the stream start or an error for it can clear it as soon as it is set, which setting this after would undo.
+    gapless_transition_ = true;
     qLog(Debug) << "Setting next URL to" << Utilities::UrlForLog(next_gst_url_);
     g_object_set(G_OBJECT(pipeline_), "uri", next_gst_url_.constData(), nullptr);
   }
