@@ -642,7 +642,8 @@ void CollectionBackend::AddOrUpdateSongs(const SongList &songs) {
   SqlQuery q_song_exists(db);
   q_song_exists.prepare(QStringLiteral("SELECT ROWID FROM %1 WHERE ROWID = :id").arg(songs_table_));
   SqlQuery q_find_url(db);
-  q_find_url.prepare(QStringLiteral("SELECT %1 FROM %2 WHERE (url = :url1 OR url = :url2 OR url = :url3 OR url = :url4) AND beginning = :beginning ORDER BY unavailable ASC LIMIT 1").arg(Song::kRowIdColumnSpec, songs_table_));
+  // The CUE sheet is matched too, the media file of a CUE sheet can also have a song for the whole media file, for example while the CUE sheet can't be read, which starts at the same position as the first CUE song.
+  q_find_url.prepare(QStringLiteral("SELECT %1 FROM %2 WHERE (url = :url1 OR url = :url2 OR url = :url3 OR url = :url4) AND beginning = :beginning AND IFNULL(cue_path, '') = :cue_path ORDER BY unavailable ASC LIMIT 1").arg(Song::kRowIdColumnSpec, songs_table_));
   SqlQuery q_update(db);
   q_update.prepare(QStringLiteral("UPDATE %1 SET %2 WHERE ROWID = :id").arg(songs_table_, Song::kUpdateSpec));
   SqlQuery q_insert(db);
@@ -661,6 +662,8 @@ void CollectionBackend::AddOrUpdateSongs(const SongList &songs) {
     return true;
   };
 
+  // A query failing for one song only skips that song, otherwise the transaction is rolled back, and all the songs of the batch are lost.
+  // SQLite normally only rolls back the failed statement, but for some errors, like when the disk is full, it rolls back the transaction, then stop, the songs before it were not saved.
   for (const Song &song : songs) {
 
     // Do a sanity check first - make sure the song's directory still exists
@@ -671,7 +674,8 @@ void CollectionBackend::AddOrUpdateSongs(const SongList &songs) {
         q_check_dir.BindValue(u":id"_s, song.directory_id());
         if (!q_check_dir.Exec()) {
           db_->ReportErrors(q_check_dir);
-          return;
+          if (!transaction.active()) return;
+          continue;
         }
         directory_it = directory_exists.insert(song.directory_id(), q_check_dir.next());
         q_check_dir.finish();
@@ -687,14 +691,18 @@ void CollectionBackend::AddOrUpdateSongs(const SongList &songs) {
       q_song_exists.BindValue(u":id"_s, song.id());
       if (!q_song_exists.Exec()) {
         db_->ReportErrors(q_song_exists);
-        return;
+        if (!transaction.active()) return;
+        continue;
       }
       const bool song_exists = q_song_exists.next();
       q_song_exists.finish();
       if (!song_exists) continue;
 
       // Update
-      if (!update_song(song)) return;
+      if (!update_song(song)) {
+        if (!transaction.active()) return;
+        continue;
+      }
 
       changed_songs << song;
 
@@ -712,7 +720,10 @@ void CollectionBackend::AddOrUpdateSongs(const SongList &songs) {
         new_song.set_id(old_song.id());
 
         // Update
-        if (!update_song(new_song)) return;
+        if (!update_song(new_song)) {
+          if (!transaction.active()) return;
+          continue;
+        }
 
         changed_songs << new_song;
 
@@ -731,9 +742,12 @@ void CollectionBackend::AddOrUpdateSongs(const SongList &songs) {
       q_find_url.BindValue(u":url3"_s, song.url().toEncoded(QUrl::FullyDecoded));
       q_find_url.BindValue(u":url4"_s, song.url().toEncoded(QUrl::FullyEncoded));
       q_find_url.BindValue(u":beginning"_s, song.beginning_nanosec());
+      // Not a null string, which would be bound as NULL.
+      q_find_url.BindValue(u":cue_path"_s, song.has_cue() ? song.cue_path() : u""_s);
       if (!q_find_url.Exec()) {
         db_->ReportErrors(q_find_url);
-        return;
+        if (!transaction.active()) return;
+        continue;
       }
       if (q_find_url.next()) {
         existing_song.InitFromQuery(q_find_url, true);
@@ -744,7 +758,10 @@ void CollectionBackend::AddOrUpdateSongs(const SongList &songs) {
         new_song.set_id(existing_song.id());
         // Don't lose user data: a missed match means the incoming song carries freshly-read (zeroed) statistics.
         new_song.MergeUserSetData(existing_song, true, true);
-        if (!update_song(new_song)) return;
+        if (!update_song(new_song)) {
+          if (!transaction.active()) return;
+          continue;
+        }
         changed_songs << new_song;
         continue;
       }
@@ -756,12 +773,13 @@ void CollectionBackend::AddOrUpdateSongs(const SongList &songs) {
     song.BindToQuery(&q_insert);
     if (!q_insert.Exec()) {
       db_->ReportErrors(q_insert);
-      return;
+      if (!transaction.active()) return;
+      continue;
     }
     // Get the new ID
     const int id = q_insert.lastInsertId().toInt();
 
-    if (id == -1) return;
+    if (id == -1) continue;
 
     Song song_copy(song);
     song_copy.set_id(id);
@@ -769,7 +787,7 @@ void CollectionBackend::AddOrUpdateSongs(const SongList &songs) {
 
   }
 
-  transaction.Commit();
+  if (!transaction.Commit()) return;
 
   if (!added_songs.isEmpty()) Q_EMIT SongsAdded(added_songs);
   if (!changed_songs.isEmpty()) Q_EMIT SongsChanged(changed_songs);
