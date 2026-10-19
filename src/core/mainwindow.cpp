@@ -363,6 +363,7 @@ MainWindow::MainWindow(Application *app,
       equalizer_(new Equalizer),
       organize_dialog_([this, app]() {
         OrganizeDialog *dialog = new OrganizeDialog(app->task_manager(), app->tagreader_client(), app->collection_backend(), this);
+        dialog->SetCollectionDirectoryModel(app->collection()->model()->directory_model());
         dialog->SetDestinationModel(app->collection()->model()->directory_model());
         return dialog;
       }),
@@ -542,7 +543,7 @@ MainWindow::MainWindow(Application *app,
   collection_view_->view()->setModel(app_->collection()->model()->filter());
   collection_view_->view()->Init(app->task_manager(), app->tagreader_client(), app->network(), app->albumcover_loader(), app->current_albumcover_loader(), app->cover_providers(), app->lyrics_providers(), app->collection(), app->device_manager(), app->streaming_services());
   device_view_->view()->Init(app->task_manager(), app->tagreader_client(), app->device_manager(), app->collection_model()->directory_model());
-  playlist_list_->Init(app_->task_manager(), app->tagreader_client(), app_->playlist_manager(), app_->playlist_backend(), app_->device_manager());
+  playlist_list_->Init(app_->task_manager(), app->tagreader_client(), app_->playlist_manager(), app_->playlist_backend(), app_->device_manager(), app->collection_model()->directory_model());
 
   organize_dialog_->SetDestinationModel(app_->collection()->model()->directory_model());
 
@@ -779,9 +780,6 @@ MainWindow::MainWindow(Application *app,
   QObject::connect(app_->collection_model(), &CollectionModel::TotalAlbumCountUpdated, collection_view_->view(), &CollectionView::TotalAlbumCountUpdated);
   QObject::connect(app_->collection_model(), &CollectionModel::modelAboutToBeReset, collection_view_->view(), &CollectionView::SaveFocus);
   QObject::connect(app_->collection_model(), &CollectionModel::modelReset, collection_view_->view(), &CollectionView::RestoreFocus);
-
-  QObject::connect(&*app_->task_manager(), &TaskManager::PauseCollectionWatchers, &*app_->collection(), &CollectionManager::PauseWatcher);
-  QObject::connect(&*app_->task_manager(), &TaskManager::ResumeCollectionWatchers, &*app_->collection(), &CollectionManager::ResumeWatcher);
 
   QObject::connect(&*app_->playlist_manager(), &PlaylistManager::CurrentSongChanged, &*app_->collection(), &CollectionManager::CurrentSongChanged);
   QObject::connect(&*app_->player(), &Player::Stopped, &*app_->collection(), &CollectionManager::Stopped);
@@ -2154,8 +2152,10 @@ void MainWindow::ShowPlaylistContextMenu(const QPoint global_pos, const QModelIn
 
   playlist_menu_index_ = source_index;
 
+  const bool is_current_row = source_index.isValid() && IsActivePlaylistCurrentRow(source_index.row());
+
   // Is this song currently playing?
-  if (app_->playlist_manager()->current()->current_row() == source_index.row() && app_->player()->GetState() == EngineBase::State::Playing) {
+  if (is_current_row && app_->player()->GetState() == EngineBase::State::Playing) {
     playlist_play_pause_->setText(tr("Pause"));
     playlist_play_pause_->setIcon(IconLoader::Load(u"media-playback-pause"_s));
   }
@@ -2166,7 +2166,7 @@ void MainWindow::ShowPlaylistContextMenu(const QPoint global_pos, const QModelIn
 
   // Are we allowed to pause?
   if (source_index.isValid()) {
-    playlist_play_pause_->setEnabled(app_->playlist_manager()->current()->current_row() != source_index.row() || !(app_->playlist_manager()->current()->item_at(source_index.row())->options() & PlaylistItem::Option::PauseDisabled));
+    playlist_play_pause_->setEnabled(!is_current_row || !(app_->playlist_manager()->current()->item_at(source_index.row())->options() & PlaylistItem::Option::PauseDisabled));
   }
   else {
     playlist_play_pause_->setEnabled(false);
@@ -2376,9 +2376,17 @@ void MainWindow::ShowPlaylistContextMenu(const QPoint global_pos, const QModelIn
 
 }
 
+bool MainWindow::IsActivePlaylistCurrentRow(const int row) const {
+
+  // The visible playlist also has a current row when it's not the playing playlist, it's only the playing song in the active playlist.
+  Playlist *playlist = app_->playlist_manager()->current();
+  return playlist == app_->playlist_manager()->active() && playlist->current_row() == row;
+
+}
+
 void MainWindow::PlaylistPlay() {
 
-  if (app_->playlist_manager()->current()->current_row() == playlist_menu_index_.row()) {
+  if (playlist_menu_index_.isValid() && IsActivePlaylistCurrentRow(playlist_menu_index_.row())) {
     app_->player()->PlayPause(0, Playlist::AutoScroll::Never);
   }
   else {
